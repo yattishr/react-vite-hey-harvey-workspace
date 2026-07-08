@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1782909015871,
+      "tag": "0000_worried_marvel_zombies",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1782912103416,
+      "tag": "0001_cultured_captain_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1782913337632,
+      "tag": "0002_cute_infant_terrible",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1782916354352,
+      "tag": "0003_luxuriant_magik",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1783523683645,
+      "tag": "0004_moaning_molly_hayes",
+      "breakpoints": true
+    }
+  ]
+}
