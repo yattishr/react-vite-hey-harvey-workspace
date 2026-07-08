@@ -9,7 +9,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/lib/supabase";
+import { clearActiveOrganizationId, supabase } from "@/lib/supabase";
 import { Mail } from "lucide-react";
 import { FormEvent, useState } from "react";
 
@@ -45,6 +45,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           password,
         });
         if (error) throw error;
+        clearActiveOrganizationId();
         onOpenChange(false);
         return;
       }
@@ -58,6 +59,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           },
         });
         if (error) throw error;
+        clearActiveOrganizationId();
         setMessage("Check your email to confirm your account.");
         return;
       }
@@ -69,6 +71,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         },
       });
       if (error) throw error;
+      clearActiveOrganizationId();
       setMessage("Magic link sent. Check your email to continue.");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Authentication failed");

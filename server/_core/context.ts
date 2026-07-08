@@ -24,6 +24,7 @@ export async function createContext(
     membership = session?.membership ?? null;
   } catch (error) {
     // Authentication is optional for public procedures.
+    console.warn("[Auth] Failed to build auth context", error);
     user = null;
     organization = null;
     membership = null;

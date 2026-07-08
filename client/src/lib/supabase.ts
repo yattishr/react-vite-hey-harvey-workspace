@@ -20,3 +20,11 @@ export function getActiveOrganizationId() {
     return null;
   }
 }
+
+export function clearActiveOrganizationId() {
+  try {
+    localStorage.removeItem(ACTIVE_ORGANIZATION_ID_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures; auth should still proceed.
+  }
+}
