@@ -1,14 +1,17 @@
 import { eq, and, desc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { InsertUser, users, agents, tasks, conversations, messages, taskExecutionLogs, tools, workflows, workflowSteps, workflowExecutions, workflowExecutionSteps, organizations, organizationMembers } from "../drizzle/schema";
 
+let _client: ReturnType<typeof postgres> | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _client = postgres(process.env.DATABASE_URL, { prepare: false });
+      _db = drizzle(_client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -73,9 +76,13 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
+    await db
+      .insert(users)
+      .values(values)
+      .onConflictDoUpdate({
+        target: users.supabaseUserId,
+        set: updateSet,
+      });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
@@ -381,8 +388,8 @@ export async function getToolsByCategory(category: string) {
 export async function createWorkflow(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(workflows).values(data);
-  return { id: result[0]?.insertId || 0, ...data };
+  const result = await db.insert(workflows).values(data).returning({ id: workflows.id });
+  return { id: result[0]?.id || 0, ...data };
 }
 
 export async function getWorkflowById(id: number) {
@@ -401,8 +408,8 @@ export async function getWorkflowsByUserId(userId: number) {
 export async function createWorkflowStep(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(workflowSteps).values(data);
-  return { id: result[0]?.insertId || 0, ...data };
+  const result = await db.insert(workflowSteps).values(data).returning({ id: workflowSteps.id });
+  return { id: result[0]?.id || 0, ...data };
 }
 
 export async function getWorkflowStepsByWorkflowId(workflowId: number) {
@@ -414,8 +421,8 @@ export async function getWorkflowStepsByWorkflowId(workflowId: number) {
 export async function createWorkflowExecution(data: any) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(workflowExecutions).values(data);
-  return { id: result[0]?.insertId || 0, ...data };
+  const result = await db.insert(workflowExecutions).values(data).returning({ id: workflowExecutions.id });
+  return { id: result[0]?.id || 0, ...data };
 }
 
 export async function getWorkflowExecutionById(id: number) {
