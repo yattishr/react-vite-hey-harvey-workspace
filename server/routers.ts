@@ -4,12 +4,15 @@ import { systemRouter } from "./_core/systemRouter";
 import { organizationProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
-import { executeTaskWithAgents, agentConversation, initializeBuiltInTools } from "./crewai";
+import { agentConversation } from "./agentOrchestrator";
+import { agentFactoryRouter } from "./agentFactory";
 import { executeWorkflow } from "./workflow";
+import { executeStoredTask } from "./taskExecution";
 import { TRPCError } from "@trpc/server";
 
 export const appRouter = router({
   system: systemRouter,
+  agentFactory: agentFactoryRouter,
   auth: router({
     me: publicProcedure.query(opts =>
       opts.ctx.user
@@ -210,77 +213,7 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
-        if (task.status === "running") {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "Task is already running",
-          });
-        }
-
-        await db.clearExecutionLogsByTaskId(input.id);
-
-        // Update task status to running
-        await db.updateTask(input.id, {
-          status: "running",
-          result: null,
-          error: null,
-          executionStartedAt: new Date(),
-          executionCompletedAt: null,
-        });
-
-        try {
-          // Get agent details
-          const agentIds = task.agentIds as number[];
-          const agents = [];
-          for (const agentId of agentIds) {
-            const agent = await db.getAgentById(agentId);
-            if (agent) {
-              agents.push({
-                id: agent.id,
-                name: agent.name,
-                role: agent.role,
-                goal: agent.goal,
-                backstory: agent.backstory || "",
-                tools: typeof agent.tools === 'string' ? JSON.parse(agent.tools) : agent.tools || [],
-              });
-            }
-          }
-
-          // Execute task with agents
-          const result = await executeTaskWithAgents({
-            description: task.description,
-            agentIds: agentIds,
-            agents: agents,
-          });
-
-          // Update task with result
-          await db.updateTask(input.id, {
-            status: result.success ? "completed" : "failed",
-            result: result.result || null,
-            error: result.error || null,
-            executionCompletedAt: new Date(),
-          });
-
-          // Store execution logs
-          for (const step of result.steps) {
-            await db.addExecutionLog({
-              taskId: input.id,
-              step: step.step,
-              action: step.action,
-              details: step.details,
-            });
-          }
-
-          return { success: result.success, result: result.result };
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          await db.updateTask(input.id, {
-            status: "failed",
-            error: errorMessage,
-            executionCompletedAt: new Date(),
-          });
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: errorMessage });
-        }
+        return await executeStoredTask(task);
       }),
 
     getExecutionLogs: organizationProcedure

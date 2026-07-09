@@ -38,7 +38,7 @@ export default function Home() {
         <div className="container flex items-center justify-between py-4">
           <div className="flex items-center gap-2">
             <Zap className="w-6 h-6 text-accent" />
-            <span className="text-xl font-bold">CrewAI Platform</span>
+            <span className="text-xl font-bold">Hey Harvey Workspace</span>
           </div>
           <Button onClick={() => setAuthOpen(true)}>Sign In</Button>
         </div>
@@ -175,7 +175,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-border bg-card py-8">
         <div className="container text-center text-sm text-muted-foreground">
-          <p>© 2026 CrewAI Platform. Built with elegance and precision.</p>
+          <p>© 2026 Hey Harvey Workspace. Built with elegance and precision.</p>
         </div>
       </footer>
 

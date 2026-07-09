@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Plus, Trash2, Edit2, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Agents() {
+  const { user, organization } = useAuth();
+  const queriesEnabled = Boolean(user && organization);
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -21,7 +24,7 @@ export default function Agents() {
     backstory: "",
   });
 
-  const agentsQuery = trpc.agents.list.useQuery();
+  const agentsQuery = trpc.agents.list.useQuery(undefined, { enabled: queriesEnabled });
   const createMutation = trpc.agents.create.useMutation();
   const updateMutation = trpc.agents.update.useMutation();
   const deleteMutation = trpc.agents.delete.useMutation();

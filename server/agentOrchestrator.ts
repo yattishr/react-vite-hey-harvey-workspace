@@ -1,10 +1,8 @@
-import { spawn } from "child_process";
-import path from "path";
 import { invokeLLM } from "./_core/llm";
 
 /**
- * CrewAI Integration Module
- * Handles agent creation, task execution, and LLM-powered reasoning
+ * Agent orchestration module
+ * Handles task execution and LLM-powered multi-agent reasoning.
  */
 
 export interface AgentConfig {
@@ -38,7 +36,7 @@ export interface TaskExecutionResult {
 
 /**
  * Execute a task using LLM-powered agent reasoning
- * Simulates CrewAI agent collaboration through LLM calls
+ * Simulates agent collaboration through direct LLM calls.
  */
 export async function executeTaskWithAgents(
   input: TaskInput,

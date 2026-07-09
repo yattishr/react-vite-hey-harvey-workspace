@@ -8,9 +8,11 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Agents from "./pages/Agents";
 import Tasks from "./pages/Tasks";
+import TaskFactory from "./pages/TaskFactory";
 import TaskDetail from "./pages/TaskDetail";
 import Conversations from "./pages/Conversations";
 import Workflows from "./pages/Workflows";
+import WorkflowDetail from "./pages/WorkflowDetail";
 import DashboardLayout from "./components/DashboardLayout";
 import { useAuth } from "./_core/hooks/useAuth";
 import { DashboardLayoutSkeleton } from "./components/DashboardLayoutSkeleton";
@@ -62,6 +64,13 @@ function Router() {
               </DashboardLayout>
             )}
           </Route>
+          <Route path={"/build-team"}>
+            {() => (
+              <DashboardLayout>
+                <TaskFactory />
+              </DashboardLayout>
+            )}
+          </Route>
           <Route path={"/tasks/:id"}>
             {() => (
               <DashboardLayout>
@@ -80,6 +89,13 @@ function Router() {
             {() => (
               <DashboardLayout>
                 <Workflows />
+              </DashboardLayout>
+            )}
+          </Route>
+          <Route path={"/workflows/:id"}>
+            {() => (
+              <DashboardLayout>
+                <WorkflowDetail />
               </DashboardLayout>
             )}
           </Route>

@@ -9,9 +9,11 @@ import { MessageCircle, Plus, Send, Trash2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from "streamdown";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function Conversations() {
+  const { user, organization } = useAuth();
+  const queriesEnabled = Boolean(user && organization);
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [newConversationTitle, setNewConversationTitle] = useState("");
   const [selectedAgentIds, setSelectedAgentIds] = useState<number[]>([]);
@@ -19,11 +21,11 @@ export default function Conversations() {
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
 
   // Queries
-  const conversationsQuery = trpc.conversations.list.useQuery();
-  const agentsQuery = trpc.agents.list.useQuery();
+  const conversationsQuery = trpc.conversations.list.useQuery(undefined, { enabled: queriesEnabled });
+  const agentsQuery = trpc.agents.list.useQuery(undefined, { enabled: queriesEnabled });
   const messagesQuery = trpc.conversations.getMessages.useQuery(
     { conversationId: selectedConversationId! },
-    { enabled: !!selectedConversationId }
+    { enabled: !!selectedConversationId && queriesEnabled }
   );
 
   // Mutations

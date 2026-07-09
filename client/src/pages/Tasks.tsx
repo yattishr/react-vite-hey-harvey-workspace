@@ -8,11 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Pencil, Plus, Play, CheckCircle, AlertCircle, Clock, Zap, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
 export default function Tasks() {
+  const { user, organization } = useAuth();
+  const queriesEnabled = Boolean(user && organization);
   const [isOpen, setIsOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
@@ -21,8 +24,8 @@ export default function Tasks() {
     agentIds: [] as number[],
   });
 
-  const tasksQuery = trpc.tasks.list.useQuery();
-  const agentsQuery = trpc.agents.list.useQuery();
+  const tasksQuery = trpc.tasks.list.useQuery(undefined, { enabled: queriesEnabled });
+  const agentsQuery = trpc.agents.list.useQuery(undefined, { enabled: queriesEnabled });
   const createMutation = trpc.tasks.create.useMutation();
   const updateMutation = trpc.tasks.update.useMutation();
   const executeMutation = trpc.tasks.execute.useMutation();

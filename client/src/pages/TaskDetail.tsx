@@ -14,10 +14,13 @@ import { Streamdown } from "streamdown";
 import { useTaskPolling } from "@/hooks/useTaskPolling";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const taskId = id ? parseInt(id) : null;
+  const { user, organization } = useAuth();
+  const queriesEnabled = Boolean(user && organization);
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -27,8 +30,8 @@ export default function TaskDetail() {
   });
 
   // Use polling hook for real-time updates
-  const { task, logs, isLoading, isError } = useTaskPolling(taskId);
-  const agentsQuery = trpc.agents.list.useQuery();
+  const { task, logs, isLoading, isError } = useTaskPolling(taskId, queriesEnabled);
+  const agentsQuery = trpc.agents.list.useQuery(undefined, { enabled: queriesEnabled });
   const updateMutation = trpc.tasks.update.useMutation();
   const executeMutation = trpc.tasks.execute.useMutation();
   const utils = trpc.useUtils();

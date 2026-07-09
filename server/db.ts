@@ -221,8 +221,11 @@ export async function createAgent(agent: typeof agents.$inferInsert) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(agents).values(agent);
-  return result;
+  const result = await db.insert(agents).values(agent).returning();
+  if (!result[0]) {
+    throw new Error("Failed to create agent");
+  }
+  return result[0];
 }
 
 export async function getAgentsByUserId(userId: number) {
@@ -260,8 +263,11 @@ export async function createTask(task: typeof tasks.$inferInsert) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   
-  const result = await db.insert(tasks).values(task);
-  return result;
+  const result = await db.insert(tasks).values(task).returning();
+  if (!result[0]) {
+    throw new Error("Failed to create task");
+  }
+  return result[0];
 }
 
 export async function getTasksByUserId(userId: number, limit = 50) {

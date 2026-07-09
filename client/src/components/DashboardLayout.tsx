@@ -21,14 +21,15 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, CheckSquare, MessageCircle, Zap, Settings } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, CheckSquare, MessageCircle, Zap, WandSparkles } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: WandSparkles, label: "Build My Team", path: "/build-team" },
   { icon: Users, label: "Agents", path: "/agents" },
   { icon: CheckSquare, label: "Tasks", path: "/tasks" },
   { icon: MessageCircle, label: "Conversations", path: "/conversations" },
@@ -111,11 +112,13 @@ function DashboardLayoutContent({
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
-  const { state, toggleSidebar } = useSidebar();
+  const { state, toggleSidebar, setOpenMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(item => item.path === location);
+  const activeMenuItem = menuItems.find(item =>
+    location === item.path || location.startsWith(`${item.path}/`)
+  );
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -184,12 +187,18 @@ function DashboardLayoutContent({
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
               {menuItems.map(item => {
-                const isActive = location === item.path;
+                const isActive =
+                  location === item.path || location.startsWith(`${item.path}/`);
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      onClick={() => setLocation(item.path)}
+                      onClick={() => {
+                        setLocation(item.path);
+                        if (isMobile) {
+                          setOpenMobile(false);
+                        }
+                      }}
                       tooltip={item.label}
                       className={`h-10 transition-all font-normal`}
                     >

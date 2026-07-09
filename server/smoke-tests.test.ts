@@ -3,7 +3,7 @@ import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
 /**
- * Smoke Tests for CrewAI Agent Platform
+ * Smoke tests for the agent orchestration platform
  * Tests core functionality: agent creation, task execution, and status tracking
  */
 
@@ -49,7 +49,7 @@ function createMockContext(): TrpcContext {
   };
 }
 
-describe("CrewAI Agent Platform - Smoke Tests", () => {
+describe("Agent Orchestration Platform - Smoke Tests", () => {
   let caller: ReturnType<typeof appRouter.createCaller>;
   let testAgentId: number;
   let testTaskId: number;

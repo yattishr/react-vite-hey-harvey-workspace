@@ -8,9 +8,10 @@ import { Link } from "wouter";
 import { Plus, Zap, CheckCircle, AlertCircle, Clock } from "lucide-react";
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  const agentsQuery = trpc.agents.list.useQuery();
-  const tasksQuery = trpc.tasks.list.useQuery();
+  const { user, organization } = useAuth();
+  const queriesEnabled = Boolean(user && organization);
+  const agentsQuery = trpc.agents.list.useQuery(undefined, { enabled: queriesEnabled });
+  const tasksQuery = trpc.tasks.list.useQuery(undefined, { enabled: queriesEnabled });
 
   const agents = agentsQuery.data || [];
   const tasks = tasksQuery.data || [];
