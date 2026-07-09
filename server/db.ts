@@ -125,59 +125,77 @@ export async function ensureDefaultOrganizationForUser(user: typeof users.$infer
     return null;
   }
 
-  const existingMemberships = await db
-    .select({
-      organization: organizations,
-      membership: organizationMembers,
-    })
-    .from(organizationMembers)
-    .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
-    .where(eq(organizationMembers.userId, user.id))
-    .limit(1);
+  return db.transaction(async tx => {
+    const existingMemberships = await tx
+      .select({
+        organization: organizations,
+        membership: organizationMembers,
+      })
+      .from(organizationMembers)
+      .innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id))
+      .where(eq(organizationMembers.userId, user.id))
+      .limit(1);
 
-  if (existingMemberships[0]) {
-    return existingMemberships[0];
-  }
+    if (existingMemberships[0]) {
+      return existingMemberships[0];
+    }
 
-  const displayName = user.name || user.email || "My Organization";
-  const baseSlug = slugifyOrganizationName(displayName);
-  const slug = `${baseSlug}-${user.id}`;
+    const displayName = user.name || user.email || "My Organization";
+    const baseSlug = slugifyOrganizationName(displayName);
+    const slug = `${baseSlug}-${user.id}`;
 
-  await db.insert(organizations).values({
-    name: displayName,
-    slug,
-    createdByUserId: user.id,
+    const existingOrganizations = await tx
+      .select()
+      .from(organizations)
+      .where(eq(organizations.slug, slug))
+      .limit(1);
+
+    let organization = existingOrganizations[0];
+
+    if (!organization) {
+      const createdOrganizations = await tx
+        .insert(organizations)
+        .values({
+          name: displayName,
+          slug,
+          createdByUserId: user.id,
+        })
+        .returning();
+
+      organization = createdOrganizations[0];
+    }
+
+    if (!organization) {
+      throw new Error("Failed to create default organization");
+    }
+
+    const existingDefaultMemberships = await tx
+      .select()
+      .from(organizationMembers)
+      .where(and(eq(organizationMembers.organizationId, organization.id), eq(organizationMembers.userId, user.id)))
+      .limit(1);
+
+    let membership = existingDefaultMemberships[0];
+
+    if (!membership) {
+      const createdMemberships = await tx
+        .insert(organizationMembers)
+        .values({
+          organizationId: organization.id,
+          userId: user.id,
+          role: "owner",
+        })
+        .returning();
+
+      membership = createdMemberships[0];
+    }
+
+    if (!membership) {
+      throw new Error("Failed to create default organization membership");
+    }
+
+    return { organization, membership };
   });
-
-  const createdOrganizations = await db
-    .select()
-    .from(organizations)
-    .where(eq(organizations.slug, slug))
-    .limit(1);
-  const organization = createdOrganizations[0];
-
-  if (!organization) {
-    throw new Error("Failed to create default organization");
-  }
-
-  await db.insert(organizationMembers).values({
-    organizationId: organization.id,
-    userId: user.id,
-    role: "owner",
-  });
-
-  const memberships = await db
-    .select()
-    .from(organizationMembers)
-    .where(and(eq(organizationMembers.organizationId, organization.id), eq(organizationMembers.userId, user.id)))
-    .limit(1);
-
-  const membership = memberships[0];
-  if (!membership) {
-    throw new Error("Failed to create default organization membership");
-  }
-
-  return { organization, membership };
 }
 
 export async function getOrganizationMembership(userId: number, organizationId: number) {
@@ -269,6 +287,13 @@ export async function updateTask(taskId: number, updates: Partial<typeof tasks.$
   if (!db) throw new Error("Database not available");
   
   return await db.update(tasks).set(updates).where(eq(tasks.id, taskId));
+}
+
+export async function clearExecutionLogsByTaskId(taskId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return await db.delete(taskExecutionLogs).where(eq(taskExecutionLogs.taskId, taskId));
 }
 
 export async function getTasksByStatus(userId: number, status: string) {

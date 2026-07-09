@@ -3,20 +3,101 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Play, CheckCircle, AlertCircle, Clock, Zap, Download, ChevronDown, ChevronUp, Brain } from "lucide-react";
+import { ArrowLeft, Play, CheckCircle, AlertCircle, Clock, Zap, Download, ChevronDown, ChevronUp, Brain, Pencil, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { Streamdown } from "streamdown";
 import { useTaskPolling } from "@/hooks/useTaskPolling";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function TaskDetail() {
   const { id } = useParams<{ id: string }>();
   const taskId = id ? parseInt(id) : null;
   const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set());
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    agentIds: [] as number[],
+  });
 
   // Use polling hook for real-time updates
   const { task, logs, isLoading, isError } = useTaskPolling(taskId);
+  const agentsQuery = trpc.agents.list.useQuery();
+  const updateMutation = trpc.tasks.update.useMutation();
+  const executeMutation = trpc.tasks.execute.useMutation();
+  const utils = trpc.useUtils();
+
+  const agents = agentsQuery.data || [];
+
+  useEffect(() => {
+    if (!task || isEditOpen) return;
+    setFormData({
+      title: task.title,
+      description: task.description,
+      agentIds: task.agentIds as number[],
+    });
+  }, [isEditOpen, task]);
+
+  const toggleAgent = (agentId: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      agentIds: prev.agentIds.includes(agentId)
+        ? prev.agentIds.filter((id) => id !== agentId)
+        : [...prev.agentIds, agentId],
+    }));
+  };
+
+  const handleExecuteTask = async () => {
+    if (!taskId) return;
+
+    try {
+      await executeMutation.mutateAsync({ id: taskId });
+      toast.success("Task execution started");
+      await Promise.all([
+        utils.tasks.get.invalidate({ id: taskId }),
+        utils.tasks.getExecutionLogs.invalidate({ taskId }),
+        utils.tasks.list.invalidate(),
+      ]);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to execute task";
+      toast.error(message);
+    }
+  };
+
+  const handleUpdateTask = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!taskId) return;
+
+    if (!formData.title || !formData.description || formData.agentIds.length === 0) {
+      toast.error("Please fill in all required fields and select at least one agent");
+      return;
+    }
+
+    try {
+      await updateMutation.mutateAsync({
+        id: taskId,
+        title: formData.title,
+        description: formData.description,
+        agentIds: formData.agentIds,
+      });
+      toast.success("Task updated");
+      setIsEditOpen(false);
+      await Promise.all([
+        utils.tasks.get.invalidate({ id: taskId }),
+        utils.tasks.getExecutionLogs.invalidate({ taskId }),
+        utils.tasks.list.invalidate(),
+      ]);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to update task";
+      toast.error(message);
+    }
+  };
 
   const toggleLogExpanded = (logId: number) => {
     const newExpanded = new Set(expandedLogs);
@@ -137,7 +218,88 @@ export default function TaskDetail() {
             {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
           </Badge>
         </div>
+        {task.status !== "running" && (
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => setIsEditOpen(true)}
+          >
+            <Pencil className="w-4 h-4" />
+            Edit
+          </Button>
+        )}
       </div>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateTask} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="detail-task-title">Task Title *</Label>
+              <Input
+                id="detail-task-title"
+                value={formData.title}
+                onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="detail-task-description">Task Description *</Label>
+              <Textarea
+                id="detail-task-description"
+                value={formData.description}
+                onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Assign Agents *</Label>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {agents.length > 0 ? (
+                  agents.map((agent) => (
+                    <div key={agent.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id={`detail-agent-${agent.id}`}
+                        checked={formData.agentIds.includes(agent.id)}
+                        onChange={() => toggleAgent(agent.id)}
+                        className="rounded border-border"
+                      />
+                      <label
+                        htmlFor={`detail-agent-${agent.id}`}
+                        className="flex-1 cursor-pointer text-sm"
+                      >
+                        <span className="font-medium">{agent.name}</span>
+                        <span className="text-muted-foreground ml-2">({agent.role})</span>
+                      </label>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No agents available. Create agents first.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Task Overview */}
       <Card className="p-6 card-elevated">
@@ -330,9 +492,23 @@ export default function TaskDetail() {
       {/* Action Buttons */}
       <div className="flex gap-2">
         {task.status === "queued" && (
-          <Button className="gap-2">
+          <Button
+            className="gap-2"
+            onClick={handleExecuteTask}
+            disabled={executeMutation.isPending}
+          >
             <Play className="w-4 h-4" />
             Execute Task
+          </Button>
+        )}
+        {task.status === "failed" && (
+          <Button
+            className="gap-2"
+            onClick={handleExecuteTask}
+            disabled={executeMutation.isPending}
+          >
+            <RotateCcw className="w-4 h-4" />
+            Retry Task
           </Button>
         )}
         <Link href="/tasks">

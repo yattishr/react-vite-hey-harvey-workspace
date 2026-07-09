@@ -1,4 +1,4 @@
-import { boolean, integer, json, pgEnum, pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, json, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 export const appRoleEnum = pgEnum("appRole", ["user", "admin"]);
 export const organizationRoleEnum = pgEnum("organizationRole", ["owner", "admin", "member"]);
@@ -52,14 +52,23 @@ export type InsertOrganization = typeof organizations.$inferInsert;
 /**
  * Organization membership controls tenant access and organization-level roles.
  */
-export const organizationMembers = pgTable("organizationMembers", {
-  id: serial("id").primaryKey(),
-  organizationId: integer("organizationId").notNull(),
-  userId: integer("userId").notNull(),
-  role: organizationRoleEnum("role").default("member").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
-});
+export const organizationMembers = pgTable(
+  "organizationMembers",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    userId: integer("userId").notNull(),
+    role: organizationRoleEnum("role").default("member").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("organizationMembers_organizationId_userId_unique").on(
+      table.organizationId,
+      table.userId
+    ),
+  ]
+);
 
 export type OrganizationMember = typeof organizationMembers.$inferSelect;
 export type InsertOrganizationMember = typeof organizationMembers.$inferInsert;

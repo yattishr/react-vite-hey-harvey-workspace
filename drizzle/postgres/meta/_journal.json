@@ -8,6 +8,13 @@
       "when": 1783526912721,
       "tag": "0000_careful_power_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783600000000,
+      "tag": "0001_unique_organization_membership",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 import { ENV } from "./env";
+import https from "node:https";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
@@ -212,13 +213,18 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+const resolveApiBaseUrl = () => {
+  const configured = ENV.llmApiUrl.trim();
+  if (!configured) return "https://api.openai.com/v1";
+
+  const trimmed = configured.replace(/\/$/, "");
+  return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
+};
+
+const resolveApiUrl = () => `${resolveApiBaseUrl()}/chat/completions`;
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
+  if (!ENV.llmApiKey) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 };
@@ -273,6 +279,19 @@ const RETRY_BASE_DELAY_MS = 500;
 const RETRY_MAX_DELAY_MS = 30_000;
 
 type FetchInit = NonNullable<Parameters<typeof fetch>[1]>;
+type LlmHttpResponse = {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: {
+    get(name: string): string | null;
+  };
+  body?: {
+    cancel(): Promise<void>;
+  } | null;
+  text(): Promise<string>;
+  json(): Promise<unknown>;
+};
 
 const sleep = (ms: number) =>
   new Promise<void>(resolve => setTimeout(resolve, ms));
@@ -299,15 +318,91 @@ const computeBackoffDelay = (
 
 // Retries non-2xx responses and network errors with exponential backoff, then
 // returns the final Response so callers keep their existing error handling.
+const isCertificateChainError = (error: unknown) => {
+  const cause = (error as { cause?: { code?: string } }).cause;
+  return cause?.code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE";
+};
+
+const fetchWithInsecureTls = (
+  url: string,
+  init: FetchInit
+): Promise<LlmHttpResponse> => {
+  return new Promise((resolve, reject) => {
+    const requestUrl = new URL(url);
+    const request = https.request(
+      requestUrl,
+      {
+        method: init.method ?? "GET",
+        rejectUnauthorized: false,
+        headers: init.headers as Record<string, string>,
+      },
+      response => {
+        const chunks: Buffer[] = [];
+
+        response.on("data", chunk => {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        });
+        response.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf8");
+          const status = response.statusCode ?? 0;
+
+          resolve({
+            ok: status >= 200 && status < 300,
+            status,
+            statusText: response.statusMessage ?? "",
+            headers: {
+              get(name: string) {
+                const value = response.headers[name.toLowerCase()];
+                if (Array.isArray(value)) return value[0] ?? null;
+                return value ?? null;
+              },
+            },
+            body: {
+              async cancel() {},
+            },
+            async text() {
+              return body;
+            },
+            async json() {
+              return JSON.parse(body);
+            },
+          });
+        });
+      }
+    );
+
+    request.on("error", reject);
+    if (init.body) {
+      request.write(init.body);
+    }
+    request.end();
+  });
+};
+
+const fetchLlm = async (url: string, init: FetchInit): Promise<LlmHttpResponse> => {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    if (!ENV.isProduction && isCertificateChainError(error)) {
+      console.warn(
+        "[LLM] TLS verification failed; retrying with local development TLS fallback"
+      );
+      return fetchWithInsecureTls(url, init);
+    }
+
+    throw error;
+  }
+};
+
 const fetchWithBackoff = async (
   url: string,
   init: FetchInit
-): Promise<Response> => {
+): Promise<LlmHttpResponse> => {
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= RETRY_MAX_RETRIES; attempt++) {
     try {
-      const response = await fetch(url, init);
+      const response = await fetchLlm(url, init);
       if (response.ok || attempt === RETRY_MAX_RETRIES) {
         return response;
       }
@@ -360,11 +455,8 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   const payload: Record<string, unknown> = {
     messages: messages.map(normalizeMessage),
+    model: model || ENV.llmModel,
   };
-
-  if (model) {
-    payload.model = model;
-  }
 
   if (tools && tools.length > 0) {
     payload.tools = tools;
@@ -405,7 +497,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${ENV.llmApiKey}`,
     },
     body: JSON.stringify(payload),
   });
@@ -435,12 +527,10 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  const url = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
-    : "https://forge.manus.im/v1/models";
+  const url = `${resolveApiBaseUrl()}/models`;
 
   const response = await fetchWithBackoff(url, {
-    headers: { authorization: `Bearer ${ENV.forgeApiKey}` },
+    headers: { authorization: `Bearer ${ENV.llmApiKey}` },
   });
 
   if (!response.ok) {

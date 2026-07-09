@@ -154,6 +154,54 @@ export const appRouter = router({
         return task;
       }),
 
+    update: organizationProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          title: z.string().min(1).max(255),
+          description: z.string().min(1),
+          agentIds: z.array(z.number()).min(1),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const task = await db.getTaskById(input.id);
+        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+
+        if (task.status === "running") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Cannot edit a task while it is running",
+          });
+        }
+
+        for (const agentId of input.agentIds) {
+          const agent = await db.getAgentById(agentId);
+          if (!agent || agent.userId !== ctx.user.id || agent.organizationId !== ctx.organization.id) {
+            throw new TRPCError({ code: "NOT_FOUND", message: `Agent ${agentId} not found` });
+          }
+        }
+
+        await db.updateTask(input.id, {
+          title: input.title,
+          description: input.description,
+          agentIds: input.agentIds,
+          status: "queued",
+          result: null,
+          error: null,
+          executionStartedAt: null,
+          executionCompletedAt: null,
+        });
+        await db.clearExecutionLogsByTaskId(input.id);
+
+        const updated = await db.getTaskById(input.id);
+        if (!updated) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+        return updated;
+      }),
+
     execute: organizationProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -162,10 +210,22 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
+        if (task.status === "running") {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Task is already running",
+          });
+        }
+
+        await db.clearExecutionLogsByTaskId(input.id);
+
         // Update task status to running
         await db.updateTask(input.id, {
           status: "running",
+          result: null,
+          error: null,
           executionStartedAt: new Date(),
+          executionCompletedAt: null,
         });
 
         try {

@@ -8,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
-import { Plus, Play, CheckCircle, AlertCircle, Clock, Zap } from "lucide-react";
+import { Pencil, Plus, Play, CheckCircle, AlertCircle, Clock, Zap, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
 export default function Tasks() {
   const [isOpen, setIsOpen] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -23,11 +24,34 @@ export default function Tasks() {
   const tasksQuery = trpc.tasks.list.useQuery();
   const agentsQuery = trpc.agents.list.useQuery();
   const createMutation = trpc.tasks.create.useMutation();
+  const updateMutation = trpc.tasks.update.useMutation();
   const executeMutation = trpc.tasks.execute.useMutation();
   const utils = trpc.useUtils();
 
   const tasks = tasksQuery.data || [];
   const agents = agentsQuery.data || [];
+
+  const openCreateDialog = () => {
+    setEditingTaskId(null);
+    setFormData({ title: "", description: "", agentIds: [] });
+    setIsOpen(true);
+  };
+
+  const openEditDialog = (task: (typeof tasks)[number]) => {
+    setEditingTaskId(task.id);
+    setFormData({
+      title: task.title,
+      description: task.description,
+      agentIds: task.agentIds as number[],
+    });
+    setIsOpen(true);
+  };
+
+  const closeDialog = () => {
+    setIsOpen(false);
+    setEditingTaskId(null);
+    setFormData({ title: "", description: "", agentIds: [] });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,17 +62,26 @@ export default function Tasks() {
     }
 
     try {
-      await createMutation.mutateAsync({
-        title: formData.title,
-        description: formData.description,
-        agentIds: formData.agentIds,
-      });
-      toast.success("Task created successfully");
+      if (editingTaskId) {
+        await updateMutation.mutateAsync({
+          id: editingTaskId,
+          title: formData.title,
+          description: formData.description,
+          agentIds: formData.agentIds,
+        });
+        toast.success("Task updated");
+      } else {
+        await createMutation.mutateAsync({
+          title: formData.title,
+          description: formData.description,
+          agentIds: formData.agentIds,
+        });
+        toast.success("Task created successfully");
+      }
       await utils.tasks.list.invalidate();
-      setIsOpen(false);
-      setFormData({ title: "", description: "", agentIds: [] });
+      closeDialog();
     } catch (error) {
-      toast.error("Failed to create task");
+      toast.error(editingTaskId ? "Failed to update task" : "Failed to create task");
     }
   };
 
@@ -57,8 +90,9 @@ export default function Tasks() {
       await executeMutation.mutateAsync({ id: taskId });
       toast.success("Task execution started");
       await utils.tasks.list.invalidate();
-    } catch (error) {
-      toast.error("Failed to execute task");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to execute task";
+      toast.error(message);
     }
   };
 
@@ -70,6 +104,76 @@ export default function Tasks() {
         : [...prev.agentIds, agentId],
     }));
   };
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  const taskForm = (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="title">Task Title *</Label>
+        <Input
+          id="title"
+          placeholder="e.g., Market Research Report"
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Task Description *</Label>
+        <Textarea
+          id="description"
+          placeholder="Describe the task in natural language. What should the agents do?"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          rows={4}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Assign Agents *</Label>
+        <div className="space-y-2 max-h-48 overflow-y-auto">
+          {agents.length > 0 ? (
+            agents.map((agent) => (
+              <div key={agent.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id={`agent-${agent.id}`}
+                  checked={formData.agentIds.includes(agent.id)}
+                  onChange={() => toggleAgent(agent.id)}
+                  className="rounded border-border"
+                />
+                <label
+                  htmlFor={`agent-${agent.id}`}
+                  className="flex-1 cursor-pointer text-sm"
+                >
+                  <span className="font-medium">{agent.name}</span>
+                  <span className="text-muted-foreground ml-2">({agent.role})</span>
+                </label>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No agents available. Create agents first.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex gap-2 justify-end pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={closeDialog}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSaving}>
+          {editingTaskId ? "Save Changes" : "Create Task"}
+        </Button>
+      </div>
+    </form>
+  );
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -113,80 +217,16 @@ export default function Tasks() {
         </div>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={openCreateDialog}>
               <Plus className="w-4 h-4" />
               New Task
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Create New Task</DialogTitle>
+              <DialogTitle>{editingTaskId ? "Edit Task" : "Create New Task"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Task Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="e.g., Market Research Report"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Task Description *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe the task in natural language. What should the agents do?"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={4}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Assign Agents *</Label>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {agents.length > 0 ? (
-                    agents.map((agent) => (
-                      <div key={agent.id} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id={`agent-${agent.id}`}
-                          checked={formData.agentIds.includes(agent.id)}
-                          onChange={() => toggleAgent(agent.id)}
-                          className="rounded border-border"
-                        />
-                        <label
-                          htmlFor={`agent-${agent.id}`}
-                          className="flex-1 cursor-pointer text-sm"
-                        >
-                          <span className="font-medium">{agent.name}</span>
-                          <span className="text-muted-foreground ml-2">({agent.role})</span>
-                        </label>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No agents available. Create agents first.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-2 justify-end pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  Create Task
-                </Button>
-              </div>
-            </form>
+            {taskForm}
           </DialogContent>
         </Dialog>
       </div>
@@ -235,6 +275,36 @@ export default function Tasks() {
                         Execute
                       </Button>
                     )}
+                    {task.status === "failed" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleExecuteTask(task.id);
+                        }}
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        Retry
+                      </Button>
+                    )}
+                    {task.status !== "running" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openEditDialog(task);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                        Edit
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -269,77 +339,13 @@ export default function Tasks() {
           <p className="text-muted-foreground mb-4">No tasks yet. Create your first task to get started.</p>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button>Create Your First Task</Button>
+              <Button onClick={openCreateDialog}>Create Your First Task</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Create New Task</DialogTitle>
+                <DialogTitle>{editingTaskId ? "Edit Task" : "Create New Task"}</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Task Title *</Label>
-                  <Input
-                    id="title"
-                    placeholder="e.g., Market Research Report"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Task Description *</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe the task in natural language. What should the agents do?"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={4}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Assign Agents *</Label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {agents.length > 0 ? (
-                      agents.map((agent) => (
-                        <div key={agent.id} className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id={`agent-${agent.id}`}
-                            checked={formData.agentIds.includes(agent.id)}
-                            onChange={() => toggleAgent(agent.id)}
-                            className="rounded border-border"
-                          />
-                          <label
-                            htmlFor={`agent-${agent.id}`}
-                            className="flex-1 cursor-pointer text-sm"
-                          >
-                            <span className="font-medium">{agent.name}</span>
-                            <span className="text-muted-foreground ml-2">({agent.role})</span>
-                          </label>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No agents available. Create agents first.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-2 justify-end pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={createMutation.isPending}>
-                    Create Task
-                  </Button>
-                </div>
-              </form>
+              {taskForm}
             </DialogContent>
           </Dialog>
         </Card>
