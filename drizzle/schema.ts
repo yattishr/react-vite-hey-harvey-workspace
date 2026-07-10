@@ -133,6 +133,7 @@ export const agentTemplates = pgTable(
     organizationId: integer("organizationId").notNull(),
     name: varchar("name", { length: 255 }).notNull(),
     slug: varchar("slug", { length: 255 }).notNull(),
+    roleKey: varchar("roleKey", { length: 255 }).default("research_analyst").notNull(),
     role: varchar("role", { length: 255 }).notNull(),
     description: text("description").notNull(),
     goal: text("goal").notNull(),
@@ -151,6 +152,7 @@ export const agentTemplates = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
   },
   table => [
+    index("agentTemplates_organizationId_roleKey_idx").on(table.organizationId, table.roleKey),
     uniqueIndex("agentTemplates_organizationId_fingerprint_unique").on(
       table.organizationId,
       table.fingerprint

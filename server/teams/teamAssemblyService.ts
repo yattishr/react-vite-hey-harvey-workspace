@@ -35,10 +35,12 @@ export async function assembleTaskTeam(taskId: number, blueprint: ExecutionBluep
 
     const resolved = await resolveAgentTemplate({
       organizationId: blueprint.organizationId,
+      roleKey: role.roleKey,
       name: role.name,
       responsibility: role.responsibility,
       requiredCapabilities: role.requiredCapabilities,
       taskSpecificInstructions: role.taskSpecificInstructions,
+      taskObjective: blueprint.objective,
     });
 
     const member = await createTeamMember({

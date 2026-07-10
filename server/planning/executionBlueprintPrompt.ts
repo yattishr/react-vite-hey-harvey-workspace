@@ -65,5 +65,23 @@ ${input.title}
 Task description:
 ${input.description}
 
-Create a sequential execution blueprint. Generate reusable specialist roles and capabilities, not persisted agents. Keep the workflow to the smallest useful team.`;
+Create a sequential execution blueprint. Generate reusable specialist roles and capabilities, not persisted agents. Keep the workflow to the smallest useful team.
+
+Use canonical roleKey values. Prefer these when appropriate:
+- research_analyst
+- investment_research_analyst
+- financial_analyst
+- risk_analyst
+- valuation_analyst
+- report_writer
+- qa_reviewer
+- marketing_analyst
+- operations_analyst
+- technology_consultant
+- project_manager
+- workflow_designer
+
+Keep company names, products, industries, and task subjects out of roleKey values. Put task-specific subject matter in taskSpecificInstructions only.
+
+Avoid duplicate workflow steps for the same roleKey unless the same reusable specialist intentionally performs distinct sequential stages. If the same roleKey is used more than once, make each step objective materially different.`;
 }

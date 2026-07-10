@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 export interface AgentFingerprintInput {
-  role: string;
+  roleKey: string;
   capabilities: string[];
   defaultInstructions: string[];
 }
@@ -20,7 +20,7 @@ function normalizeList(values: string[]) {
 
 export function createAgentFingerprint(input: AgentFingerprintInput) {
   const normalized = {
-    role: normalizeText(input.role),
+    roleKey: normalizeText(input.roleKey),
     capabilities: normalizeList(input.capabilities),
     defaultInstructions: normalizeList(input.defaultInstructions),
   };

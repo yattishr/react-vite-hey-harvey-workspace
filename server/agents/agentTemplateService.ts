@@ -2,6 +2,11 @@ import type { AgentTemplate } from "../../drizzle/schema";
 import { createAgentFingerprint, normalizeAgentSlug } from "./agentFingerprint";
 import { findBestAgentTemplateMatch } from "./agentMatcher";
 import {
+  canonicalizeCapabilities,
+  inferCanonicalRoleKey,
+  roleKeyToDisplayName,
+} from "./roleCanon";
+import {
   createAgentTemplate,
   getAgentTemplateByFingerprint,
   listActiveAgentTemplates,
@@ -11,18 +16,28 @@ import { snapshotAgentTemplateVersion } from "./agentVersionService";
 
 export interface ResolveAgentTemplateInput {
   organizationId: number;
+  roleKey: string;
   name: string;
   responsibility: string;
   requiredCapabilities: string[];
   taskSpecificInstructions: string[];
+  taskObjective?: string;
   source?: AgentTemplate["source"];
 }
 
 export async function resolveAgentTemplate(input: ResolveAgentTemplateInput) {
-  const defaultInstructions = input.taskSpecificInstructions.slice(0, 5);
+  const canonicalRoleKey = inferCanonicalRoleKey(input);
+  const capabilities = canonicalizeCapabilities([
+    ...input.requiredCapabilities,
+    ...(canonicalRoleKey === "investment_research_analyst" ? ["investment analysis"] : []),
+  ]);
+  const defaultInstructions = [
+    "Use only task-provided context and upstream artifacts.",
+    "Separate evidence, assumptions, and recommendations.",
+  ];
   const fingerprint = createAgentFingerprint({
-    role: input.name,
-    capabilities: input.requiredCapabilities,
+    roleKey: canonicalRoleKey,
+    capabilities,
     defaultInstructions,
   });
 
@@ -33,7 +48,11 @@ export async function resolveAgentTemplate(input: ResolveAgentTemplateInput) {
   }
 
   const activeTemplates = await listActiveAgentTemplates(input.organizationId);
-  const best = findBestAgentTemplateMatch(activeTemplates, input);
+  const best = findBestAgentTemplateMatch(activeTemplates, {
+    ...input,
+    roleKey: canonicalRoleKey,
+    requiredCapabilities: capabilities,
+  });
   if (best) {
     await updateAgentTemplateCounters(input.organizationId, best.template.id, "usageCount");
     return { template: best.template, reused: true, score: best.score };
@@ -41,14 +60,15 @@ export async function resolveAgentTemplate(input: ResolveAgentTemplateInput) {
 
   const created = await createAgentTemplate({
     organizationId: input.organizationId,
-    name: input.name,
-    slug: `${normalizeAgentSlug(input.name)}-${Date.now().toString(36)}`,
-    role: input.name,
+    name: roleKeyToDisplayName(canonicalRoleKey),
+    slug: `${normalizeAgentSlug(canonicalRoleKey)}-${Date.now().toString(36)}`,
+    roleKey: canonicalRoleKey,
+    role: roleKeyToDisplayName(canonicalRoleKey),
     description: input.responsibility,
     goal: input.responsibility,
     backstory: null,
     defaultInstructions,
-    capabilities: input.requiredCapabilities,
+    capabilities,
     toolPermissions: [],
     status: "active",
     source: input.source ?? "generated",

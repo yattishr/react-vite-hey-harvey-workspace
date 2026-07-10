@@ -10,6 +10,7 @@ const baseTemplate: AgentTemplate = {
   organizationId: 10,
   name: "Research Analyst",
   slug: "research-analyst",
+  roleKey: "research_analyst",
   role: "Research Analyst",
   description: "Gather and synthesize company and market information.",
   goal: "Produce clear research summaries.",
@@ -31,12 +32,12 @@ const baseTemplate: AgentTemplate = {
 describe("reusable agent architecture", () => {
   it("creates stable fingerprints independent of punctuation and capability order", () => {
     const first = createAgentFingerprint({
-      role: "Research Analyst!",
+      roleKey: "research_analyst",
       capabilities: ["Source Evaluation", "Market Research"],
       defaultInstructions: ["Separate facts from assumptions."],
     });
     const second = createAgentFingerprint({
-      role: "research analyst",
+      roleKey: "research_analyst",
       capabilities: ["market research", "source evaluation"],
       defaultInstructions: ["separate facts from assumptions"],
     });
@@ -46,6 +47,7 @@ describe("reusable agent architecture", () => {
 
   it("matches compatible templates and respects the reuse threshold", () => {
     const input = {
+      roleKey: "research_analyst",
       name: "Research Analyst",
       responsibility: "Gather and synthesize market information.",
       requiredCapabilities: ["market research", "source evaluation"],
@@ -54,7 +56,111 @@ describe("reusable agent architecture", () => {
 
     expect(scoreAgentTemplate(baseTemplate, input)).toBeGreaterThan(0.78);
     expect(findBestAgentTemplateMatch([baseTemplate], input, 0.78)?.template.id).toBe(1);
-    expect(findBestAgentTemplateMatch([baseTemplate], input, 0.99)).toBeNull();
+    expect(
+      findBestAgentTemplateMatch([baseTemplate], {
+        ...input,
+        requiredCapabilities: ["paid media planning", "campaign analytics"],
+      })
+    ).toBeNull();
+  });
+
+  it("reuses one Risk Analyst template across Woolworths and Standard Bank tasks", () => {
+    const riskTemplate: AgentTemplate = {
+      ...baseTemplate,
+      id: 2,
+      name: "Risk Analyst",
+      role: "Risk Analyst",
+      roleKey: "risk_analyst",
+      capabilities: ["risk analysis", "investment risk assessment", "scenario analysis"],
+      defaultInstructions: ["Separate evidence, assumptions, and recommendations."],
+    };
+
+    const woolworthsRisk = {
+      roleKey: "riskAnalyst",
+      name: "Woolworths Risk Analyst",
+      responsibility: "Assess investment risks for Woolworths.",
+      requiredCapabilities: ["risk analysis", "investment risk assessment"],
+      taskSpecificInstructions: ["Focus on Woolworths-specific risks."],
+    };
+    const standardBankRisk = {
+      roleKey: "risk_analyst",
+      name: "Standard Bank Risk Analyst",
+      responsibility: "Assess investment risks for Standard Bank.",
+      requiredCapabilities: ["risk analysis", "investment risk assessment"],
+      taskSpecificInstructions: ["Focus on Standard Bank-specific risks."],
+    };
+
+    expect(findBestAgentTemplateMatch([riskTemplate], woolworthsRisk)?.template.id).toBe(2);
+    expect(findBestAgentTemplateMatch([riskTemplate], standardBankRisk)?.template.id).toBe(2);
+  });
+
+  it("reuses Investment Research Analyst across investment tasks", () => {
+    const investmentTemplate: AgentTemplate = {
+      ...baseTemplate,
+      id: 3,
+      name: "Investment Research Analyst",
+      role: "Investment Research Analyst",
+      roleKey: "investment_research_analyst",
+      capabilities: ["investment research", "business analysis", "market research"],
+    };
+
+    const match = findBestAgentTemplateMatch([investmentTemplate], {
+      roleKey: "equityResearchAnalyst",
+      name: "Company Research Analyst",
+      responsibility: "Research and assess a company as an investment opportunity.",
+      requiredCapabilities: ["investment research", "business analysis"],
+      taskSpecificInstructions: ["Focus on Standard Bank."],
+    });
+
+    expect(match?.template.id).toBe(3);
+  });
+
+  it("does not match Financial Analyst to Marketing Analyst", () => {
+    const financialTemplate: AgentTemplate = {
+      ...baseTemplate,
+      id: 4,
+      name: "Financial Analyst",
+      role: "Financial Analyst",
+      roleKey: "financial_analyst",
+      capabilities: ["financial analysis", "ratio analysis", "valuation analysis"],
+    };
+
+    const match = findBestAgentTemplateMatch([financialTemplate], {
+      roleKey: "marketing_analyst",
+      name: "Marketing Analyst",
+      responsibility: "Assess campaigns, channels, audiences, and positioning.",
+      requiredCapabilities: ["marketing analysis", "channel strategy", "audience research"],
+      taskSpecificInstructions: [],
+    });
+
+    expect(match).toBeNull();
+  });
+
+  it("does not match Research Analyst to Risk Analyst", () => {
+    const match = findBestAgentTemplateMatch([baseTemplate], {
+      roleKey: "risk_analyst",
+      name: "Risk Analyst",
+      responsibility: "Assess downside scenarios and risk controls.",
+      requiredCapabilities: ["risk analysis", "scenario analysis"],
+      taskSpecificInstructions: [],
+    });
+
+    expect(match).toBeNull();
+  });
+
+  it("keeps task-specific subject matter out of template fingerprints", () => {
+    const woolworthsFingerprint = createAgentFingerprint({
+      roleKey: "investment_research_analyst",
+      capabilities: ["investment research", "financial analysis"],
+      defaultInstructions: ["Use only task-provided context and upstream artifacts."],
+    });
+    const standardBankFingerprint = createAgentFingerprint({
+      roleKey: "investment_research_analyst",
+      capabilities: ["financial analysis", "investment research"],
+      defaultInstructions: ["Use only task-provided context and upstream artifacts."],
+    });
+
+    expect(woolworthsFingerprint).toBe(standardBankFingerprint);
   });
 
   it("excludes usage counters from version snapshots", () => {
