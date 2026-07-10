@@ -1,6 +1,10 @@
 import { TRPCError } from "@trpc/server";
 import type { Task } from "../drizzle/schema";
 import { executeTaskWithAgents } from "./agentOrchestrator";
+import {
+  executeStoredTaskWithReusableAgents,
+  isAgentTeamReuseEnabled,
+} from "./orchestration/agentOrchestrator";
 import * as db from "./db";
 
 function parseAgentTools(tools: unknown): string[] {
@@ -23,6 +27,19 @@ export async function executeStoredTask(task: Task) {
       code: "CONFLICT",
       message: "Task is already running",
     });
+  }
+
+  if (isAgentTeamReuseEnabled()) {
+    const execution = await executeStoredTaskWithReusableAgents(task);
+    const refreshedTask = await db.getTaskById(task.id);
+    return {
+      success: execution.status === "completed",
+      result: refreshedTask?.result ?? null,
+      taskId: task.id,
+      taskTeamId: execution.taskTeamId,
+      status: execution.status,
+      finalArtifacts: execution.finalArtifacts,
+    };
   }
 
   await db.clearExecutionLogsByTaskId(task.id);

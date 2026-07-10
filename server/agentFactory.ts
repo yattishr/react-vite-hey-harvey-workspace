@@ -4,6 +4,7 @@ import { invokeLLM } from "./_core/llm";
 import { organizationProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 import { executeStoredTask } from "./taskExecution";
+import { isAgentTeamReuseEnabled } from "./orchestration/agentOrchestrator";
 
 export const agentFactoryAgentSchema = z.object({
   name: z.string().min(1).max(255),
@@ -193,6 +194,28 @@ export const agentFactoryRouter = router({
     .input(approveAndRunInputSchema)
     .mutation(async ({ ctx, input }) => {
       const preview = input.preview;
+
+      if (isAgentTeamReuseEnabled()) {
+        const task = await db.createTask({
+          organizationId: ctx.organization.id,
+          userId: ctx.user.id,
+          title: preview.taskTitle,
+          description: `${input.description}\n\nGenerated task summary:\n${preview.taskSummary}`,
+          agentIds: [],
+          source: "custom",
+          workflowType: "sequential",
+          status: "queued",
+        });
+
+        const execution = await executeStoredTask(task);
+
+        return {
+          task,
+          agents: [],
+          workflow: null,
+          execution,
+        };
+      }
 
       const createdAgents = [];
       for (const agent of preview.agents) {

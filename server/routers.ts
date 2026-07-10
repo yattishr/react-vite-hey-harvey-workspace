@@ -9,6 +9,11 @@ import { agentFactoryRouter } from "./agentFactory";
 import { executeWorkflow } from "./workflow";
 import { executeStoredTask } from "./taskExecution";
 import { TRPCError } from "@trpc/server";
+import { listAgentTemplatesByStatus } from "./agents/agentTemplateRepository";
+import { getTaskRunHistory } from "./execution/agentRunService";
+import { createExecutionBlueprint, getExecutionBlueprint } from "./planning/executionBlueprintService";
+import { assembleTaskTeam } from "./teams/teamAssemblyService";
+import { isAgentTeamReuseEnabled } from "./orchestration/agentOrchestrator";
 
 export const appRouter = router({
   system: systemRouter,
@@ -61,6 +66,18 @@ export const appRouter = router({
     list: organizationProcedure.query(async ({ ctx }) => {
       return await db.getAgentsByUserId(ctx.user.id);
     }),
+
+    listAgentTemplates: organizationProcedure
+      .input(
+        z
+          .object({
+            status: z.enum(["active", "inactive", "archived"]).optional(),
+          })
+          .optional()
+      )
+      .query(async ({ ctx, input }) => {
+        return await listAgentTemplatesByStatus(ctx.organization.id, input?.status ?? "active");
+      }),
 
     get: organizationProcedure
       .input(z.object({ id: z.number() }))
@@ -119,10 +136,18 @@ export const appRouter = router({
         z.object({
           title: z.string().min(1).max(255),
           description: z.string().min(1),
-          agentIds: z.array(z.number()).min(1),
+          source: z.enum(["predefined", "custom"]).default("custom"),
+          agentIds: z.array(z.number()).default([]),
         })
       )
       .mutation(async ({ ctx, input }) => {
+        if (!isAgentTeamReuseEnabled() && input.agentIds.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "At least one agent is required while reusable agent teams are disabled",
+          });
+        }
+
         // Verify all agents belong to user
         for (const agentId of input.agentIds) {
           const agent = await db.getAgentById(agentId);
@@ -137,6 +162,8 @@ export const appRouter = router({
           title: input.title,
           description: input.description,
           agentIds: input.agentIds,
+          source: input.source,
+          workflowType: "sequential",
           status: "queued",
         });
 
@@ -214,6 +241,72 @@ export const appRouter = router({
         }
 
         return await executeStoredTask(task);
+      }),
+
+    planTask: organizationProcedure
+      .input(z.object({ taskId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const task = await db.getTaskById(input.taskId);
+        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+
+        const blueprint = await createExecutionBlueprint(task);
+        return {
+          executionBlueprintId: blueprint.id,
+          suggestedRoles: blueprint.suggestedRoles,
+        };
+      }),
+
+    assembleTaskTeam: organizationProcedure
+      .input(
+        z.object({
+          taskId: z.number(),
+          executionBlueprintId: z.number(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const task = await db.getTaskById(input.taskId);
+        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+
+        const blueprint = await getExecutionBlueprint(ctx.organization.id, input.executionBlueprintId);
+        if (!blueprint || blueprint.taskId !== task.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Execution blueprint not found" });
+        }
+
+        return assembleTaskTeam(task.id, blueprint);
+      }),
+
+    executeStoredTask: organizationProcedure
+      .input(z.object({ taskId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const task = await db.getTaskById(input.taskId);
+        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+
+        return executeStoredTask(task);
+      }),
+
+    getTaskRunHistory: organizationProcedure
+      .input(z.object({ taskId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const task = await db.getTaskById(input.taskId);
+        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+
+        const history = await getTaskRunHistory({
+          organizationId: ctx.organization.id,
+          taskId: task.id,
+        });
+
+        return {
+          task,
+          ...history,
+        };
       }),
 
     getExecutionLogs: organizationProcedure

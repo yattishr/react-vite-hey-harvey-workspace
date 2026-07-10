@@ -15,6 +15,13 @@
       "when": 1783600000000,
       "tag": "0001_unique_organization_membership",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783699200000,
+      "tag": "0002_reusable_agent_architecture",
+      "breakpoints": true
     }
   ]
 }

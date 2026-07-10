@@ -1,13 +1,20 @@
-import { boolean, integer, json, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, integer, json, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 export const appRoleEnum = pgEnum("appRole", ["user", "admin"]);
 export const organizationRoleEnum = pgEnum("organizationRole", ["owner", "admin", "member"]);
-export const taskStatusEnum = pgEnum("taskStatus", ["queued", "running", "completed", "failed"]);
+export const taskStatusEnum = pgEnum("taskStatus", ["draft", "planning", "team_ready", "queued", "running", "completed", "failed", "cancelled"]);
 export const messageRoleEnum = pgEnum("messageRole", ["user", "agent", "system"]);
 export const workflowExecutionTypeEnum = pgEnum("workflowExecutionType", ["sequential", "parallel", "conditional"]);
 export const workflowStatusEnum = pgEnum("workflowStatus", ["draft", "active", "archived"]);
 export const workflowExecutionStatusEnum = pgEnum("workflowExecutionStatus", ["queued", "running", "completed", "failed", "paused"]);
 export const workflowExecutionStepStatusEnum = pgEnum("workflowExecutionStepStatus", ["pending", "running", "completed", "failed", "skipped"]);
+export const taskSourceEnum = pgEnum("taskSource", ["predefined", "custom"]);
+export const taskWorkflowTypeEnum = pgEnum("taskWorkflowType", ["sequential"]);
+export const agentTemplateStatusEnum = pgEnum("agentTemplateStatus", ["active", "inactive", "archived"]);
+export const agentTemplateSourceEnum = pgEnum("agentTemplateSource", ["system", "generated", "user_created", "migrated"]);
+export const taskTeamStatusEnum = pgEnum("taskTeamStatus", ["assembling", "ready", "running", "completed", "failed", "cancelled"]);
+export const agentRunStatusEnum = pgEnum("agentRunStatus", ["pending", "queued", "running", "completed", "failed", "cancelled"]);
+export const taskArtifactTypeEnum = pgEnum("taskArtifactType", ["research", "analysis", "strategy", "draft", "review", "report", "structured_data", "other"]);
 
 /**
  * Core user table backing auth flow.
@@ -103,7 +110,11 @@ export const tasks = pgTable("tasks", {
   agentIds: json("agentIds").$type<number[]>().notNull(), // Array of agent IDs assigned to this task
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(), // Natural language task description
+  source: taskSourceEnum("source").default("custom").notNull(),
   status: taskStatusEnum("status").default("queued").notNull(),
+  workflowType: taskWorkflowTypeEnum("workflowType").default("sequential").notNull(),
+  taskTeamId: integer("taskTeamId"),
+  executionBlueprintId: integer("executionBlueprintId"),
   result: text("result"), // Task output/result
   error: text("error"), // Error message if task failed
   executionStartedAt: timestamp("executionStartedAt"),
@@ -114,6 +125,172 @@ export const tasks = pgTable("tasks", {
 
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = typeof tasks.$inferInsert;
+
+export const agentTemplates = pgTable(
+  "agentTemplates",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    slug: varchar("slug", { length: 255 }).notNull(),
+    role: varchar("role", { length: 255 }).notNull(),
+    description: text("description").notNull(),
+    goal: text("goal").notNull(),
+    backstory: text("backstory"),
+    defaultInstructions: json("defaultInstructions").$type<string[]>().default([]).notNull(),
+    capabilities: json("capabilities").$type<string[]>().default([]).notNull(),
+    toolPermissions: json("toolPermissions").$type<string[]>().default([]).notNull(),
+    status: agentTemplateStatusEnum("status").default("active").notNull(),
+    source: agentTemplateSourceEnum("source").default("generated").notNull(),
+    version: integer("version").default(1).notNull(),
+    fingerprint: varchar("fingerprint", { length: 128 }).notNull(),
+    usageCount: integer("usageCount").default(0).notNull(),
+    successCount: integer("successCount").default(0).notNull(),
+    failureCount: integer("failureCount").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("agentTemplates_organizationId_fingerprint_unique").on(
+      table.organizationId,
+      table.fingerprint
+    ),
+    uniqueIndex("agentTemplates_organizationId_slug_unique").on(table.organizationId, table.slug),
+  ]
+);
+
+export type AgentTemplate = typeof agentTemplates.$inferSelect;
+export type InsertAgentTemplate = typeof agentTemplates.$inferInsert;
+
+export const agentTemplateVersions = pgTable(
+  "agentTemplateVersions",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    agentTemplateId: integer("agentTemplateId").notNull(),
+    version: integer("version").notNull(),
+    snapshot: json("snapshot").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("agentTemplateVersions_organizationId_idx").on(table.organizationId),
+    uniqueIndex("agentTemplateVersions_template_version_unique").on(
+      table.agentTemplateId,
+      table.version
+    ),
+  ]
+);
+
+export type AgentTemplateVersion = typeof agentTemplateVersions.$inferSelect;
+export type InsertAgentTemplateVersion = typeof agentTemplateVersions.$inferInsert;
+
+export const executionBlueprints = pgTable(
+  "executionBlueprints",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    taskId: integer("taskId").notNull(),
+    objective: text("objective").notNull(),
+    deliverables: json("deliverables").$type<string[]>().default([]).notNull(),
+    requiredCapabilities: json("requiredCapabilities").$type<string[]>().default([]).notNull(),
+    suggestedRoles: json("suggestedRoles").$type<Record<string, unknown>[]>().default([]).notNull(),
+    workflowSteps: json("workflowSteps").$type<Record<string, unknown>[]>().default([]).notNull(),
+    assumptions: json("assumptions").$type<string[]>().default([]).notNull(),
+    constraints: json("constraints").$type<string[]>().default([]).notNull(),
+    risks: json("risks").$type<string[]>().default([]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("executionBlueprints_organizationId_taskId_idx").on(table.organizationId, table.taskId)]
+);
+
+export type ExecutionBlueprint = typeof executionBlueprints.$inferSelect;
+export type InsertExecutionBlueprint = typeof executionBlueprints.$inferInsert;
+
+export const taskTeams = pgTable(
+  "taskTeams",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    taskId: integer("taskId").notNull(),
+    status: taskTeamStatusEnum("status").default("assembling").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    completedAt: timestamp("completedAt"),
+  },
+  table => [index("taskTeams_organizationId_taskId_idx").on(table.organizationId, table.taskId)]
+);
+
+export type TaskTeam = typeof taskTeams.$inferSelect;
+export type InsertTaskTeam = typeof taskTeams.$inferInsert;
+
+export const teamMembers = pgTable(
+  "teamMembers",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    taskTeamId: integer("taskTeamId").notNull(),
+    taskId: integer("taskId").notNull(),
+    agentTemplateId: integer("agentTemplateId").notNull(),
+    agentTemplateVersion: integer("agentTemplateVersion").notNull(),
+    workflowOrder: integer("workflowOrder").notNull(),
+    roleKey: varchar("roleKey", { length: 255 }).notNull(),
+    taskSpecificInstructions: json("taskSpecificInstructions").$type<string[]>().default([]).notNull(),
+    expectedOutput: text("expectedOutput").notNull(),
+    dependsOnTeamMemberIds: json("dependsOnTeamMemberIds").$type<number[]>().default([]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("teamMembers_organizationId_taskTeamId_idx").on(table.organizationId, table.taskTeamId)]
+);
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = typeof teamMembers.$inferInsert;
+
+export const agentRuns = pgTable(
+  "agentRuns",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    taskId: integer("taskId").notNull(),
+    taskTeamId: integer("taskTeamId").notNull(),
+    teamMemberId: integer("teamMemberId").notNull(),
+    agentTemplateId: integer("agentTemplateId").notNull(),
+    agentTemplateVersion: integer("agentTemplateVersion").notNull(),
+    status: agentRunStatusEnum("status").default("pending").notNull(),
+    inputContext: json("inputContext").$type<Record<string, unknown>>().notNull(),
+    output: json("output").$type<Record<string, unknown>>(),
+    error: json("error").$type<Record<string, unknown>>(),
+    model: varchar("model", { length: 255 }),
+    promptVersion: varchar("promptVersion", { length: 64 }),
+    tokenUsage: json("tokenUsage").$type<Record<string, number>>(),
+    estimatedCost: integer("estimatedCost"),
+    startedAt: timestamp("startedAt"),
+    completedAt: timestamp("completedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("agentRuns_organizationId_taskTeamId_idx").on(table.organizationId, table.taskTeamId)]
+);
+
+export type AgentRun = typeof agentRuns.$inferSelect;
+export type InsertAgentRun = typeof agentRuns.$inferInsert;
+
+export const taskArtifacts = pgTable(
+  "taskArtifacts",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    taskId: integer("taskId").notNull(),
+    taskTeamId: integer("taskTeamId").notNull(),
+    agentRunId: integer("agentRunId").notNull(),
+    artifactType: taskArtifactTypeEnum("artifactType").default("other").notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    content: json("content").$type<unknown>().notNull(),
+    mimeType: varchar("mimeType", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("taskArtifacts_organizationId_taskTeamId_idx").on(table.organizationId, table.taskTeamId)]
+);
+
+export type TaskArtifact = typeof taskArtifacts.$inferSelect;
+export type InsertTaskArtifact = typeof taskArtifacts.$inferInsert;
 
 /**
  * Conversations table: stores chat threads between user and agents
