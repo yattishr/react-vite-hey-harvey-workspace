@@ -1,14 +1,24 @@
 import { TRPCError } from "@trpc/server";
+import { randomUUID } from "node:crypto";
 import type { Task } from "../drizzle/schema";
+import { getAgentsRuntimeConfig } from "./agents-runtime/config";
+import { publishRuntimeEvent } from "./agents-runtime/repositories/event-repository";
+import {
+  createTaskRun,
+  updateTaskRun,
+} from "./agents-runtime/repositories/task-run-repository";
+import { executeSdkWorkflow } from "./agents-runtime/workflow-executor";
 import { executeTaskWithAgents } from "./agentOrchestrator";
 import {
-  executeStoredTaskWithReusableAgents,
+  ensureTaskTeam,
   isAgentTeamReuseEnabled,
 } from "./orchestration/agentOrchestrator";
+import { executeTaskTeam } from "./execution/taskExecutor";
 import * as db from "./db";
 
 function parseAgentTools(tools: unknown): string[] {
-  if (Array.isArray(tools)) return tools.filter((tool): tool is string => typeof tool === "string");
+  if (Array.isArray(tools))
+    return tools.filter((tool): tool is string => typeof tool === "string");
   if (typeof tools !== "string" || !tools.trim()) return [];
 
   try {
@@ -29,17 +39,79 @@ export async function executeStoredTask(task: Task) {
     });
   }
 
-  if (isAgentTeamReuseEnabled()) {
-    const execution = await executeStoredTaskWithReusableAgents(task);
-    const refreshedTask = await db.getTaskById(task.id);
-    return {
-      success: execution.status === "completed",
-      result: refreshedTask?.result ?? null,
-      taskId: task.id,
-      taskTeamId: execution.taskTeamId,
-      status: execution.status,
-      finalArtifacts: execution.finalArtifacts,
-    };
+  const runtime = getAgentsRuntimeConfig().OPENAI_AGENTS_RUNTIME_ENABLED
+    ? "openai_agents_sdk"
+    : "legacy";
+  const taskTeamId =
+    runtime === "openai_agents_sdk" || isAgentTeamReuseEnabled()
+      ? await ensureTaskTeam(task)
+      : null;
+  const taskRun = await createTaskRun({
+    organizationId: task.organizationId,
+    userId: task.userId,
+    taskId: task.id,
+    taskTeamId,
+    runtime,
+    status: "queued",
+    correlationId: randomUUID(),
+  });
+
+  if (runtime === "openai_agents_sdk") {
+    try {
+      return await executeSdkWorkflow(task, taskRun);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "The task run failed";
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message });
+    }
+  }
+
+  await updateTaskRun(task.organizationId, taskRun.id, {
+    status: "running",
+    startedAt: new Date(),
+  });
+  await publishRuntimeEvent({
+    organizationId: task.organizationId,
+    taskRunId: taskRun.id,
+    type: "run_started",
+    payload: { runtime: "legacy" },
+  });
+
+  if (taskTeamId) {
+    try {
+      const execution = await executeTaskTeam(task, taskTeamId, taskRun.id);
+      await updateTaskRun(task.organizationId, taskRun.id, {
+        status: "succeeded",
+        completedAt: new Date(),
+      });
+      await publishRuntimeEvent({
+        organizationId: task.organizationId,
+        taskRunId: taskRun.id,
+        type: "run_succeeded",
+      });
+      const refreshedTask = await db.getTaskById(task.id);
+      return {
+        success: execution.status === "completed",
+        result: refreshedTask?.result ?? null,
+        taskId: task.id,
+        taskTeamId: execution.taskTeamId,
+        taskRunId: taskRun.id,
+        runtime,
+        status: execution.status,
+        finalArtifacts: execution.finalArtifacts,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "The task run failed";
+      await updateTaskRun(task.organizationId, taskRun.id, {
+        status: "failed",
+        errorCode: "LEGACY_RUNTIME_FAILED",
+        errorMessage: message,
+        failedAt: new Date(),
+        completedAt: new Date(),
+      });
+      throw error;
+    }
   }
 
   await db.clearExecutionLogsByTaskId(task.id);
@@ -58,7 +130,11 @@ export async function executeStoredTask(task: Task) {
 
     for (const agentId of agentIds) {
       const agent = await db.getAgentById(agentId);
-      if (!agent || agent.userId !== task.userId || agent.organizationId !== task.organizationId) {
+      if (
+        !agent ||
+        agent.userId !== task.userId ||
+        agent.organizationId !== task.organizationId
+      ) {
         throw new Error(`Agent ${agentId} not found`);
       }
 
@@ -94,7 +170,25 @@ export async function executeStoredTask(task: Task) {
       });
     }
 
-    return { success: result.success, result: result.result, taskId: task.id };
+    await updateTaskRun(task.organizationId, taskRun.id, {
+      status: result.success ? "succeeded" : "failed",
+      completedAt: new Date(),
+      failedAt: result.success ? null : new Date(),
+      errorCode: result.success ? null : "LEGACY_RUNTIME_FAILED",
+      errorMessage: result.error || null,
+    });
+    await publishRuntimeEvent({
+      organizationId: task.organizationId,
+      taskRunId: taskRun.id,
+      type: result.success ? "run_succeeded" : "run_failed",
+    });
+    return {
+      success: result.success,
+      result: result.result,
+      taskId: task.id,
+      taskRunId: taskRun.id,
+      runtime,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     await db.updateTask(task.id, {
@@ -102,6 +196,16 @@ export async function executeStoredTask(task: Task) {
       error: errorMessage,
       executionCompletedAt: new Date(),
     });
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: errorMessage });
+    await updateTaskRun(task.organizationId, taskRun.id, {
+      status: "failed",
+      errorCode: "LEGACY_RUNTIME_FAILED",
+      errorMessage,
+      failedAt: new Date(),
+      completedAt: new Date(),
+    });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: errorMessage,
+    });
   }
 }

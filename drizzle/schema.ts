@@ -1,20 +1,120 @@
-import { boolean, index, integer, json, pgEnum, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  json,
+  pgEnum,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 export const appRoleEnum = pgEnum("appRole", ["user", "admin"]);
-export const organizationRoleEnum = pgEnum("organizationRole", ["owner", "admin", "member"]);
-export const taskStatusEnum = pgEnum("taskStatus", ["draft", "planning", "team_ready", "queued", "running", "completed", "failed", "cancelled"]);
-export const messageRoleEnum = pgEnum("messageRole", ["user", "agent", "system"]);
-export const workflowExecutionTypeEnum = pgEnum("workflowExecutionType", ["sequential", "parallel", "conditional"]);
-export const workflowStatusEnum = pgEnum("workflowStatus", ["draft", "active", "archived"]);
-export const workflowExecutionStatusEnum = pgEnum("workflowExecutionStatus", ["queued", "running", "completed", "failed", "paused"]);
-export const workflowExecutionStepStatusEnum = pgEnum("workflowExecutionStepStatus", ["pending", "running", "completed", "failed", "skipped"]);
+export const organizationRoleEnum = pgEnum("organizationRole", [
+  "owner",
+  "admin",
+  "member",
+]);
+export const taskStatusEnum = pgEnum("taskStatus", [
+  "draft",
+  "planning",
+  "team_ready",
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export const messageRoleEnum = pgEnum("messageRole", [
+  "user",
+  "agent",
+  "system",
+]);
+export const workflowExecutionTypeEnum = pgEnum("workflowExecutionType", [
+  "sequential",
+  "parallel",
+  "conditional",
+]);
+export const workflowStatusEnum = pgEnum("workflowStatus", [
+  "draft",
+  "active",
+  "archived",
+]);
+export const workflowExecutionStatusEnum = pgEnum("workflowExecutionStatus", [
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "paused",
+]);
+export const workflowExecutionStepStatusEnum = pgEnum(
+  "workflowExecutionStepStatus",
+  ["pending", "running", "completed", "failed", "skipped"]
+);
 export const taskSourceEnum = pgEnum("taskSource", ["predefined", "custom"]);
 export const taskWorkflowTypeEnum = pgEnum("taskWorkflowType", ["sequential"]);
-export const agentTemplateStatusEnum = pgEnum("agentTemplateStatus", ["active", "inactive", "archived"]);
-export const agentTemplateSourceEnum = pgEnum("agentTemplateSource", ["system", "generated", "user_created", "migrated"]);
-export const taskTeamStatusEnum = pgEnum("taskTeamStatus", ["assembling", "ready", "running", "completed", "failed", "cancelled"]);
-export const agentRunStatusEnum = pgEnum("agentRunStatus", ["pending", "queued", "running", "completed", "failed", "cancelled"]);
-export const taskArtifactTypeEnum = pgEnum("taskArtifactType", ["research", "analysis", "strategy", "draft", "review", "report", "structured_data", "other"]);
+export const agentTemplateStatusEnum = pgEnum("agentTemplateStatus", [
+  "active",
+  "inactive",
+  "archived",
+]);
+export const agentTemplateSourceEnum = pgEnum("agentTemplateSource", [
+  "system",
+  "generated",
+  "user_created",
+  "migrated",
+]);
+export const taskTeamStatusEnum = pgEnum("taskTeamStatus", [
+  "assembling",
+  "ready",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export const agentRunStatusEnum = pgEnum("agentRunStatus", [
+  "pending",
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export const taskArtifactTypeEnum = pgEnum("taskArtifactType", [
+  "research",
+  "analysis",
+  "strategy",
+  "draft",
+  "review",
+  "report",
+  "structured_data",
+  "other",
+]);
+export const taskRuntimeEnum = pgEnum("taskRuntime", [
+  "legacy",
+  "openai_agents_sdk",
+]);
+export const taskRunStatusEnum = pgEnum("taskRunStatus", [
+  "queued",
+  "running",
+  "succeeded",
+  "failed",
+  "cancel_requested",
+  "cancelled",
+  "timed_out",
+]);
+export const runtimeStepStatusEnum = pgEnum("runtimeStepStatus", [
+  "pending",
+  "running",
+  "retrying",
+  "succeeded",
+  "failed",
+  "cancelled",
+  "timed_out",
+]);
 
 /**
  * Core user table backing auth flow.
@@ -34,7 +134,10 @@ export const users = pgTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: appRoleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
@@ -50,7 +153,10 @@ export const organizations = pgTable("organizations", {
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   createdByUserId: integer("createdByUserId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export type Organization = typeof organizations.$inferSelect;
@@ -67,7 +173,10 @@ export const organizationMembers = pgTable(
     userId: integer("userId").notNull(),
     role: organizationRoleEnum("role").default("member").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   table => [
     uniqueIndex("organizationMembers_organizationId_userId_unique").on(
@@ -91,10 +200,13 @@ export const agents = pgTable("agents", {
   role: varchar("role", { length: 255 }).notNull(), // e.g., "Research Agent", "Data Analyst"
   goal: text("goal").notNull(), // Agent's primary objective
   backstory: text("backstory"), // Agent's background/personality
-  tools: varchar("tools", { length: 1000 }).default('[]'), // Array of tool names (JSON string)
+  tools: varchar("tools", { length: 1000 }).default("[]"), // Array of tool names (JSON string)
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export type Agent = typeof agents.$inferSelect;
@@ -112,7 +224,9 @@ export const tasks = pgTable("tasks", {
   description: text("description").notNull(), // Natural language task description
   source: taskSourceEnum("source").default("custom").notNull(),
   status: taskStatusEnum("status").default("queued").notNull(),
-  workflowType: taskWorkflowTypeEnum("workflowType").default("sequential").notNull(),
+  workflowType: taskWorkflowTypeEnum("workflowType")
+    .default("sequential")
+    .notNull(),
   taskTeamId: integer("taskTeamId"),
   executionBlueprintId: integer("executionBlueprintId"),
   result: text("result"), // Task output/result
@@ -120,7 +234,10 @@ export const tasks = pgTable("tasks", {
   executionStartedAt: timestamp("executionStartedAt"),
   executionCompletedAt: timestamp("executionCompletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export type Task = typeof tasks.$inferSelect;
@@ -133,14 +250,22 @@ export const agentTemplates = pgTable(
     organizationId: integer("organizationId").notNull(),
     name: varchar("name", { length: 255 }).notNull(),
     slug: varchar("slug", { length: 255 }).notNull(),
-    roleKey: varchar("roleKey", { length: 255 }).default("research_analyst").notNull(),
+    roleKey: varchar("roleKey", { length: 255 })
+      .default("research_analyst")
+      .notNull(),
     role: varchar("role", { length: 255 }).notNull(),
     description: text("description").notNull(),
     goal: text("goal").notNull(),
     backstory: text("backstory"),
-    defaultInstructions: json("defaultInstructions").$type<string[]>().default([]).notNull(),
+    defaultInstructions: json("defaultInstructions")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
     capabilities: json("capabilities").$type<string[]>().default([]).notNull(),
-    toolPermissions: json("toolPermissions").$type<string[]>().default([]).notNull(),
+    toolPermissions: json("toolPermissions")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
     status: agentTemplateStatusEnum("status").default("active").notNull(),
     source: agentTemplateSourceEnum("source").default("generated").notNull(),
     version: integer("version").default(1).notNull(),
@@ -149,15 +274,24 @@ export const agentTemplates = pgTable(
     successCount: integer("successCount").default(0).notNull(),
     failureCount: integer("failureCount").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   table => [
-    index("agentTemplates_organizationId_roleKey_idx").on(table.organizationId, table.roleKey),
+    index("agentTemplates_organizationId_roleKey_idx").on(
+      table.organizationId,
+      table.roleKey
+    ),
     uniqueIndex("agentTemplates_organizationId_fingerprint_unique").on(
       table.organizationId,
       table.fingerprint
     ),
-    uniqueIndex("agentTemplates_organizationId_slug_unique").on(table.organizationId, table.slug),
+    uniqueIndex("agentTemplates_organizationId_slug_unique").on(
+      table.organizationId,
+      table.slug
+    ),
   ]
 );
 
@@ -184,7 +318,8 @@ export const agentTemplateVersions = pgTable(
 );
 
 export type AgentTemplateVersion = typeof agentTemplateVersions.$inferSelect;
-export type InsertAgentTemplateVersion = typeof agentTemplateVersions.$inferInsert;
+export type InsertAgentTemplateVersion =
+  typeof agentTemplateVersions.$inferInsert;
 
 export const executionBlueprints = pgTable(
   "executionBlueprints",
@@ -194,15 +329,29 @@ export const executionBlueprints = pgTable(
     taskId: integer("taskId").notNull(),
     objective: text("objective").notNull(),
     deliverables: json("deliverables").$type<string[]>().default([]).notNull(),
-    requiredCapabilities: json("requiredCapabilities").$type<string[]>().default([]).notNull(),
-    suggestedRoles: json("suggestedRoles").$type<Record<string, unknown>[]>().default([]).notNull(),
-    workflowSteps: json("workflowSteps").$type<Record<string, unknown>[]>().default([]).notNull(),
+    requiredCapabilities: json("requiredCapabilities")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
+    suggestedRoles: json("suggestedRoles")
+      .$type<Record<string, unknown>[]>()
+      .default([])
+      .notNull(),
+    workflowSteps: json("workflowSteps")
+      .$type<Record<string, unknown>[]>()
+      .default([])
+      .notNull(),
     assumptions: json("assumptions").$type<string[]>().default([]).notNull(),
     constraints: json("constraints").$type<string[]>().default([]).notNull(),
     risks: json("risks").$type<string[]>().default([]).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  table => [index("executionBlueprints_organizationId_taskId_idx").on(table.organizationId, table.taskId)]
+  table => [
+    index("executionBlueprints_organizationId_taskId_idx").on(
+      table.organizationId,
+      table.taskId
+    ),
+  ]
 );
 
 export type ExecutionBlueprint = typeof executionBlueprints.$inferSelect;
@@ -218,7 +367,12 @@ export const taskTeams = pgTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     completedAt: timestamp("completedAt"),
   },
-  table => [index("taskTeams_organizationId_taskId_idx").on(table.organizationId, table.taskId)]
+  table => [
+    index("taskTeams_organizationId_taskId_idx").on(
+      table.organizationId,
+      table.taskId
+    ),
+  ]
 );
 
 export type TaskTeam = typeof taskTeams.$inferSelect;
@@ -235,12 +389,23 @@ export const teamMembers = pgTable(
     agentTemplateVersion: integer("agentTemplateVersion").notNull(),
     workflowOrder: integer("workflowOrder").notNull(),
     roleKey: varchar("roleKey", { length: 255 }).notNull(),
-    taskSpecificInstructions: json("taskSpecificInstructions").$type<string[]>().default([]).notNull(),
+    taskSpecificInstructions: json("taskSpecificInstructions")
+      .$type<string[]>()
+      .default([])
+      .notNull(),
     expectedOutput: text("expectedOutput").notNull(),
-    dependsOnTeamMemberIds: json("dependsOnTeamMemberIds").$type<number[]>().default([]).notNull(),
+    dependsOnTeamMemberIds: json("dependsOnTeamMemberIds")
+      .$type<number[]>()
+      .default([])
+      .notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  table => [index("teamMembers_organizationId_taskTeamId_idx").on(table.organizationId, table.taskTeamId)]
+  table => [
+    index("teamMembers_organizationId_taskTeamId_idx").on(
+      table.organizationId,
+      table.taskTeamId
+    ),
+  ]
 );
 
 export type TeamMember = typeof teamMembers.$inferSelect;
@@ -256,8 +421,20 @@ export const agentRuns = pgTable(
     teamMemberId: integer("teamMemberId").notNull(),
     agentTemplateId: integer("agentTemplateId").notNull(),
     agentTemplateVersion: integer("agentTemplateVersion").notNull(),
+    taskRunId: integer("taskRunId"),
+    attempt: integer("attempt").default(1).notNull(),
+    runtimeStatus: runtimeStepStatusEnum("runtimeStatus")
+      .default("pending")
+      .notNull(),
+    runtimeIdentifier: varchar("runtimeIdentifier", { length: 255 }),
+    correlationId: varchar("correlationId", { length: 64 }),
+    openaiTraceId: varchar("openaiTraceId", { length: 64 }),
+    errorCode: varchar("errorCode", { length: 64 }),
+    errorMessage: text("errorMessage"),
     status: agentRunStatusEnum("status").default("pending").notNull(),
-    inputContext: json("inputContext").$type<Record<string, unknown>>().notNull(),
+    inputContext: json("inputContext")
+      .$type<Record<string, unknown>>()
+      .notNull(),
     output: json("output").$type<Record<string, unknown>>(),
     error: json("error").$type<Record<string, unknown>>(),
     model: varchar("model", { length: 255 }),
@@ -268,7 +445,16 @@ export const agentRuns = pgTable(
     completedAt: timestamp("completedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  table => [index("agentRuns_organizationId_taskTeamId_idx").on(table.organizationId, table.taskTeamId)]
+  table => [
+    index("agentRuns_organizationId_taskTeamId_idx").on(
+      table.organizationId,
+      table.taskTeamId
+    ),
+    index("agentRuns_organizationId_taskRunId_idx").on(
+      table.organizationId,
+      table.taskRunId
+    ),
+  ]
 );
 
 export type AgentRun = typeof agentRuns.$inferSelect;
@@ -282,17 +468,104 @@ export const taskArtifacts = pgTable(
     taskId: integer("taskId").notNull(),
     taskTeamId: integer("taskTeamId").notNull(),
     agentRunId: integer("agentRunId").notNull(),
-    artifactType: taskArtifactTypeEnum("artifactType").default("other").notNull(),
+    taskRunId: integer("taskRunId"),
+    schemaVersion: integer("schemaVersion").default(1).notNull(),
+    contentText: text("contentText"),
+    artifactType: taskArtifactTypeEnum("artifactType")
+      .default("other")
+      .notNull(),
     title: varchar("title", { length: 255 }).notNull(),
     content: json("content").$type<unknown>().notNull(),
     mimeType: varchar("mimeType", { length: 255 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  table => [index("taskArtifacts_organizationId_taskTeamId_idx").on(table.organizationId, table.taskTeamId)]
+  table => [
+    index("taskArtifacts_organizationId_taskTeamId_idx").on(
+      table.organizationId,
+      table.taskTeamId
+    ),
+    index("taskArtifacts_organizationId_taskRunId_idx").on(
+      table.organizationId,
+      table.taskRunId
+    ),
+  ]
 );
 
 export type TaskArtifact = typeof taskArtifacts.$inferSelect;
 export type InsertTaskArtifact = typeof taskArtifacts.$inferInsert;
+
+/** A durable whole-task execution. Runtime selection is immutable after creation. */
+export const taskRuns = pgTable(
+  "taskRuns",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    userId: integer("userId").notNull(),
+    taskId: integer("taskId").notNull(),
+    taskTeamId: integer("taskTeamId"),
+    runtime: taskRuntimeEnum("runtime").notNull(),
+    status: taskRunStatusEnum("status").default("queued").notNull(),
+    correlationId: varchar("correlationId", { length: 64 }).notNull(),
+    eventSequence: integer("eventSequence").default(0).notNull(),
+    openaiTraceId: varchar("openaiTraceId", { length: 64 }),
+    currentTeamMemberId: integer("currentTeamMemberId"),
+    finalArtifactId: integer("finalArtifactId"),
+    errorCode: varchar("errorCode", { length: 64 }),
+    errorMessage: text("errorMessage"),
+    startedAt: timestamp("startedAt"),
+    completedAt: timestamp("completedAt"),
+    cancelledAt: timestamp("cancelledAt"),
+    failedAt: timestamp("failedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  table => [
+    index("taskRuns_organizationId_id_idx").on(table.organizationId, table.id),
+    index("taskRuns_organizationId_taskId_createdAt_idx").on(
+      table.organizationId,
+      table.taskId,
+      table.createdAt
+    ),
+  ]
+);
+
+export type TaskRun = typeof taskRuns.$inferSelect;
+export type InsertTaskRun = typeof taskRuns.$inferInsert;
+
+/** Sanitized product events. Raw model tokens and private payloads are never stored here. */
+export const runtimeEvents = pgTable(
+  "runtimeEvents",
+  {
+    id: serial("id").primaryKey(),
+    organizationId: integer("organizationId").notNull(),
+    taskRunId: integer("taskRunId").notNull(),
+    agentRunId: integer("agentRunId"),
+    sequence: integer("sequence").notNull(),
+    type: varchar("type", { length: 64 }).notNull(),
+    payload: json("payload")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("runtimeEvents_taskRunId_sequence_unique").on(
+      table.taskRunId,
+      table.sequence
+    ),
+    index("runtimeEvents_organizationId_taskRunId_sequence_idx").on(
+      table.organizationId,
+      table.taskRunId,
+      table.sequence
+    ),
+  ]
+);
+
+export type RuntimeEvent = typeof runtimeEvents.$inferSelect;
+export type InsertRuntimeEvent = typeof runtimeEvents.$inferInsert;
 
 /**
  * Conversations table: stores chat threads between user and agents
@@ -304,7 +577,10 @@ export const conversations = pgTable("conversations", {
   taskId: integer("taskId"), // Optional: link to a specific task
   title: varchar("title", { length: 255 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export type Conversation = typeof conversations.$inferSelect;
@@ -356,7 +632,6 @@ export const tools = pgTable("tools", {
 export type Tool = typeof tools.$inferSelect;
 export type InsertTool = typeof tools.$inferInsert;
 
-
 /**
  * Workflows table: stores workflow definitions for multi-agent collaboration
  */
@@ -366,11 +641,16 @@ export const workflows = pgTable("workflows", {
   userId: integer("userId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  executionType: workflowExecutionTypeEnum("executionType").default("sequential").notNull(),
+  executionType: workflowExecutionTypeEnum("executionType")
+    .default("sequential")
+    .notNull(),
   status: workflowStatusEnum("status").default("draft").notNull(),
   config: text("config"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export type Workflow = typeof workflows.$inferSelect;
@@ -387,7 +667,10 @@ export const workflowSteps = pgTable("workflowSteps", {
   taskDescription: text("taskDescription").notNull(),
   dependsOn: text("dependsOn"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export type WorkflowStep = typeof workflowSteps.$inferSelect;
@@ -407,7 +690,10 @@ export const workflowExecutions = pgTable("workflowExecutions", {
   startedAt: timestamp("startedAt"),
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export type WorkflowExecution = typeof workflowExecutions.$inferSelect;
@@ -421,7 +707,9 @@ export const workflowExecutionSteps = pgTable("workflowExecutionSteps", {
   executionId: integer("executionId").notNull(),
   stepId: integer("stepId").notNull(),
   agentId: integer("agentId"),
-  status: workflowExecutionStepStatusEnum("status").default("pending").notNull(),
+  status: workflowExecutionStepStatusEnum("status")
+    .default("pending")
+    .notNull(),
   result: text("result"),
   error: text("error"),
   startedAt: timestamp("startedAt"),
@@ -430,4 +718,5 @@ export const workflowExecutionSteps = pgTable("workflowExecutionSteps", {
 });
 
 export type WorkflowExecutionStep = typeof workflowExecutionSteps.$inferSelect;
-export type InsertWorkflowExecutionStep = typeof workflowExecutionSteps.$inferInsert;
+export type InsertWorkflowExecutionStep =
+  typeof workflowExecutionSteps.$inferInsert;

@@ -8,10 +8,19 @@ import { agentConversation } from "./agentOrchestrator";
 import { agentFactoryRouter } from "./agentFactory";
 import { executeWorkflow } from "./workflow";
 import { executeStoredTask } from "./taskExecution";
+import { cancelActiveRun } from "./agents-runtime/cancellation";
+import { publishRuntimeEvent } from "./agents-runtime/repositories/event-repository";
+import {
+  getTaskRun,
+  updateTaskRun,
+} from "./agents-runtime/repositories/task-run-repository";
 import { TRPCError } from "@trpc/server";
 import { listAgentTemplatesByStatus } from "./agents/agentTemplateRepository";
 import { getTaskRunHistory } from "./execution/agentRunService";
-import { createExecutionBlueprint, getExecutionBlueprint } from "./planning/executionBlueprintService";
+import {
+  createExecutionBlueprint,
+  getExecutionBlueprint,
+} from "./planning/executionBlueprintService";
 import { assembleTaskTeam } from "./teams/teamAssemblyService";
 import { isAgentTeamReuseEnabled } from "./orchestration/agentOrchestrator";
 
@@ -76,14 +85,21 @@ export const appRouter = router({
           .optional()
       )
       .query(async ({ ctx, input }) => {
-        return await listAgentTemplatesByStatus(ctx.organization.id, input?.status ?? "active");
+        return await listAgentTemplatesByStatus(
+          ctx.organization.id,
+          input?.status ?? "active"
+        );
       }),
 
     get: organizationProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const agent = await db.getAgentById(input.id);
-        if (!agent || agent.userId !== ctx.user.id || agent.organizationId !== ctx.organization.id) {
+        if (
+          !agent ||
+          agent.userId !== ctx.user.id ||
+          agent.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return agent;
@@ -103,7 +119,11 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const agent = await db.getAgentById(input.id);
-        if (!agent || agent.userId !== ctx.user.id || agent.organizationId !== ctx.organization.id) {
+        if (
+          !agent ||
+          agent.userId !== ctx.user.id ||
+          agent.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
@@ -122,7 +142,11 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const agent = await db.getAgentById(input.id);
-        if (!agent || agent.userId !== ctx.user.id || agent.organizationId !== ctx.organization.id) {
+        if (
+          !agent ||
+          agent.userId !== ctx.user.id ||
+          agent.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return await db.deleteAgent(input.id);
@@ -144,15 +168,23 @@ export const appRouter = router({
         if (!isAgentTeamReuseEnabled() && input.agentIds.length === 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "At least one agent is required while reusable agent teams are disabled",
+            message:
+              "At least one agent is required while reusable agent teams are disabled",
           });
         }
 
         // Verify all agents belong to user
         for (const agentId of input.agentIds) {
           const agent = await db.getAgentById(agentId);
-          if (!agent || agent.userId !== ctx.user.id || agent.organizationId !== ctx.organization.id) {
-            throw new TRPCError({ code: "NOT_FOUND", message: `Agent ${agentId} not found` });
+          if (
+            !agent ||
+            agent.userId !== ctx.user.id ||
+            agent.organizationId !== ctx.organization.id
+          ) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: `Agent ${agentId} not found`,
+            });
           }
         }
 
@@ -178,7 +210,11 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const task = await db.getTaskById(input.id);
-        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+        if (
+          !task ||
+          task.userId !== ctx.user.id ||
+          task.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return task;
@@ -195,7 +231,11 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const task = await db.getTaskById(input.id);
-        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+        if (
+          !task ||
+          task.userId !== ctx.user.id ||
+          task.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
@@ -208,8 +248,15 @@ export const appRouter = router({
 
         for (const agentId of input.agentIds) {
           const agent = await db.getAgentById(agentId);
-          if (!agent || agent.userId !== ctx.user.id || agent.organizationId !== ctx.organization.id) {
-            throw new TRPCError({ code: "NOT_FOUND", message: `Agent ${agentId} not found` });
+          if (
+            !agent ||
+            agent.userId !== ctx.user.id ||
+            agent.organizationId !== ctx.organization.id
+          ) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: `Agent ${agentId} not found`,
+            });
           }
         }
 
@@ -236,7 +283,11 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const task = await db.getTaskById(input.id);
-        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+        if (
+          !task ||
+          task.userId !== ctx.user.id ||
+          task.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
@@ -247,7 +298,11 @@ export const appRouter = router({
       .input(z.object({ taskId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const task = await db.getTaskById(input.taskId);
-        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+        if (
+          !task ||
+          task.userId !== ctx.user.id ||
+          task.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
@@ -267,13 +322,23 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const task = await db.getTaskById(input.taskId);
-        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+        if (
+          !task ||
+          task.userId !== ctx.user.id ||
+          task.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
-        const blueprint = await getExecutionBlueprint(ctx.organization.id, input.executionBlueprintId);
+        const blueprint = await getExecutionBlueprint(
+          ctx.organization.id,
+          input.executionBlueprintId
+        );
         if (!blueprint || blueprint.taskId !== task.id) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Execution blueprint not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Execution blueprint not found",
+          });
         }
 
         return assembleTaskTeam(task.id, blueprint);
@@ -283,7 +348,11 @@ export const appRouter = router({
       .input(z.object({ taskId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         const task = await db.getTaskById(input.taskId);
-        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+        if (
+          !task ||
+          task.userId !== ctx.user.id ||
+          task.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
@@ -294,7 +363,11 @@ export const appRouter = router({
       .input(z.object({ taskId: z.number() }))
       .query(async ({ ctx, input }) => {
         const task = await db.getTaskById(input.taskId);
-        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+        if (
+          !task ||
+          task.userId !== ctx.user.id ||
+          task.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
@@ -309,11 +382,50 @@ export const appRouter = router({
         };
       }),
 
+    cancelRun: organizationProcedure
+      .input(z.object({ taskRunId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const run = await getTaskRun(ctx.organization.id, input.taskRunId);
+        if (!run) throw new TRPCError({ code: "NOT_FOUND" });
+        const task = await db.getTaskById(run.taskId);
+        if (
+          !task ||
+          task.userId !== ctx.user.id ||
+          task.organizationId !== ctx.organization.id
+        ) {
+          throw new TRPCError({ code: "NOT_FOUND" });
+        }
+        if (!["queued", "running", "cancel_requested"].includes(run.status)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Run is already finished",
+          });
+        }
+        await updateTaskRun(ctx.organization.id, run.id, {
+          status: "cancel_requested",
+        });
+        await publishRuntimeEvent({
+          organizationId: ctx.organization.id,
+          taskRunId: run.id,
+          type: "cancel_requested",
+        });
+        const delivered = cancelActiveRun(run.id);
+        return {
+          taskRunId: run.id,
+          status: "cancel_requested" as const,
+          delivered,
+        };
+      }),
+
     getExecutionLogs: organizationProcedure
       .input(z.object({ taskId: z.number() }))
       .query(async ({ ctx, input }) => {
         const task = await db.getTaskById(input.taskId);
-        if (!task || task.userId !== ctx.user.id || task.organizationId !== ctx.organization.id) {
+        if (
+          !task ||
+          task.userId !== ctx.user.id ||
+          task.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return await db.getExecutionLogsByTaskId(input.taskId);
@@ -346,7 +458,11 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const conversation = await db.getConversationById(input.id);
-        if (!conversation || conversation.userId !== ctx.user.id || conversation.organizationId !== ctx.organization.id) {
+        if (
+          !conversation ||
+          conversation.userId !== ctx.user.id ||
+          conversation.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return conversation;
@@ -363,7 +479,11 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const conversation = await db.getConversationById(input.conversationId);
-        if (!conversation || conversation.userId !== ctx.user.id || conversation.organizationId !== ctx.organization.id) {
+        if (
+          !conversation ||
+          conversation.userId !== ctx.user.id ||
+          conversation.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
@@ -379,7 +499,11 @@ export const appRouter = router({
       .input(z.object({ conversationId: z.number() }))
       .query(async ({ ctx, input }) => {
         const conversation = await db.getConversationById(input.conversationId);
-        if (!conversation || conversation.userId !== ctx.user.id || conversation.organizationId !== ctx.organization.id) {
+        if (
+          !conversation ||
+          conversation.userId !== ctx.user.id ||
+          conversation.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return await db.getMessagesByConversationId(input.conversationId);
@@ -395,7 +519,11 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const conversation = await db.getConversationById(input.conversationId);
-        if (!conversation || conversation.userId !== ctx.user.id || conversation.organizationId !== ctx.organization.id) {
+        if (
+          !conversation ||
+          conversation.userId !== ctx.user.id ||
+          conversation.organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
 
@@ -403,31 +531,47 @@ export const appRouter = router({
         const agents = [];
         for (const agentId of input.agentIds) {
           const agent = await db.getAgentById(agentId);
-          if (agent && agent.userId === ctx.user.id && agent.organizationId === ctx.organization.id) {
+          if (
+            agent &&
+            agent.userId === ctx.user.id &&
+            agent.organizationId === ctx.organization.id
+          ) {
             agents.push({
               id: agent.id,
               name: agent.name,
               role: agent.role,
               goal: agent.goal,
               backstory: agent.backstory || "",
-                tools: typeof agent.tools === 'string' ? JSON.parse(agent.tools) : agent.tools || [],
+              tools:
+                typeof agent.tools === "string"
+                  ? JSON.parse(agent.tools)
+                  : agent.tools || [],
             });
           }
         }
 
         if (agents.length === 0) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "No valid agents found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "No valid agents found",
+          });
         }
 
         // Get conversation history
-        const messages = await db.getMessagesByConversationId(input.conversationId);
-        const history = messages.map((msg) => ({
+        const messages = await db.getMessagesByConversationId(
+          input.conversationId
+        );
+        const history = messages.map(msg => ({
           role: msg.role,
           content: msg.content,
         }));
 
         // Get agent response
-        const response = await agentConversation(agents, input.userMessage, history);
+        const response = await agentConversation(
+          agents,
+          input.userMessage,
+          history
+        );
 
         // Store user message
         await db.addMessage({
@@ -466,7 +610,9 @@ export const appRouter = router({
         z.object({
           name: z.string().min(1).max(255),
           description: z.string().optional(),
-          executionType: z.enum(["sequential", "parallel", "conditional"]).default("sequential"),
+          executionType: z
+            .enum(["sequential", "parallel", "conditional"])
+            .default("sequential"),
           steps: z.array(
             z.object({
               stepNumber: z.number(),
@@ -501,8 +647,12 @@ export const appRouter = router({
 
           return workflow;
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: errorMessage });
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: errorMessage,
+          });
         }
       }),
 
@@ -514,7 +664,11 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
         const workflow = await db.getWorkflowById(input.id);
-        if (!workflow || (workflow as any).userId !== ctx.user.id || (workflow as any).organizationId !== ctx.organization.id) {
+        if (
+          !workflow ||
+          (workflow as any).userId !== ctx.user.id ||
+          (workflow as any).organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return workflow;
@@ -525,7 +679,11 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         try {
           const workflow = await db.getWorkflowById(input.workflowId);
-          if (!workflow || (workflow as any).userId !== ctx.user.id || (workflow as any).organizationId !== ctx.organization.id) {
+          if (
+            !workflow ||
+            (workflow as any).userId !== ctx.user.id ||
+            (workflow as any).organizationId !== ctx.organization.id
+          ) {
             throw new TRPCError({ code: "NOT_FOUND" });
           }
 
@@ -536,14 +694,22 @@ export const appRouter = router({
             status: "running",
           });
 
-          executeWorkflow(input.workflowId, (execution as any).id, ctx.user.id).catch((error) => {
+          executeWorkflow(
+            input.workflowId,
+            (execution as any).id,
+            ctx.user.id
+          ).catch(error => {
             console.error("Workflow execution error:", error);
           });
 
           return execution;
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: errorMessage });
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: errorMessage,
+          });
         }
       }),
 
@@ -551,7 +717,11 @@ export const appRouter = router({
       .input(z.object({ executionId: z.number() }))
       .query(async ({ ctx, input }) => {
         const execution = await db.getWorkflowExecutionById(input.executionId);
-        if (!execution || (execution as any).userId !== ctx.user.id || (execution as any).organizationId !== ctx.organization.id) {
+        if (
+          !execution ||
+          (execution as any).userId !== ctx.user.id ||
+          (execution as any).organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return execution;
@@ -561,17 +731,27 @@ export const appRouter = router({
       .input(z.object({ executionId: z.number() }))
       .query(async ({ ctx, input }) => {
         const execution = await db.getWorkflowExecutionById(input.executionId);
-        if (!execution || (execution as any).userId !== ctx.user.id || (execution as any).organizationId !== ctx.organization.id) {
+        if (
+          !execution ||
+          (execution as any).userId !== ctx.user.id ||
+          (execution as any).organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
-        return await db.getWorkflowExecutionStepsByExecutionId(input.executionId);
+        return await db.getWorkflowExecutionStepsByExecutionId(
+          input.executionId
+        );
       }),
 
     listExecutions: organizationProcedure
       .input(z.object({ workflowId: z.number() }))
       .query(async ({ ctx, input }) => {
         const workflow = await db.getWorkflowById(input.workflowId);
-        if (!workflow || (workflow as any).userId !== ctx.user.id || (workflow as any).organizationId !== ctx.organization.id) {
+        if (
+          !workflow ||
+          (workflow as any).userId !== ctx.user.id ||
+          (workflow as any).organizationId !== ctx.organization.id
+        ) {
           throw new TRPCError({ code: "NOT_FOUND" });
         }
         return await db.getWorkflowExecutionsByWorkflowId(input.workflowId);
@@ -580,5 +760,3 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
-
-

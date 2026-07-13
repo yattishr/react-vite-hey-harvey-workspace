@@ -9,7 +9,11 @@ import {
   incrementAgentTemplateSuccess,
 } from "../agents/agentTemplateService";
 import { getDb } from "../db";
-import { getTaskTeam, getOrderedTeamMembers, updateTaskTeamStatus } from "../teams/taskTeamRepository";
+import {
+  getTaskTeam,
+  getOrderedTeamMembers,
+  updateTaskTeamStatus,
+} from "../teams/taskTeamRepository";
 import {
   createAgentRun,
   getAgentRunsByTaskTeam,
@@ -22,7 +26,10 @@ import {
   getArtifactsByTaskTeam,
   toArtifactReference,
 } from "./artifactRepository";
-import { buildAgentExecutionPrompt, buildAgentRunInputContext } from "./executionContextBuilder";
+import {
+  buildAgentExecutionPrompt,
+  buildAgentRunInputContext,
+} from "./executionContextBuilder";
 
 function normalizeError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
@@ -56,7 +63,11 @@ async function updateTaskStatus(
     .where(and(eq(tasks.organizationId, organizationId), eq(tasks.id, taskId)));
 }
 
-export async function executeTaskTeam(task: Task, taskTeamId: number) {
+export async function executeTaskTeam(
+  task: Task,
+  taskTeamId: number,
+  taskRunId?: number
+) {
   const team = await getTaskTeam(task.organizationId, taskTeamId);
   if (!team || team.taskId !== task.id) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Task team not found" });
@@ -64,7 +75,10 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
 
   const members = await getOrderedTeamMembers(task.organizationId, taskTeamId);
   if (members.length === 0) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Task team has no members" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Task team has no members",
+    });
   }
 
   await updateTaskTeamStatus(task.organizationId, team.id, "running");
@@ -81,7 +95,10 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
 
   try {
     for (const member of members) {
-      const template = await getAgentTemplateById(task.organizationId, member.agentTemplateId);
+      const template = await getAgentTemplateById(
+        task.organizationId,
+        member.agentTemplateId
+      );
       if (!template) {
         throw new Error(`Agent template ${member.agentTemplateId} not found`);
       }
@@ -91,7 +108,10 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
         member.dependsOnTeamMemberIds
       );
       for (const dependencyRun of dependencyRuns) {
-        completedRunIdsByTeamMember.set(dependencyRun.teamMemberId, dependencyRun.id);
+        completedRunIdsByTeamMember.set(
+          dependencyRun.teamMemberId,
+          dependencyRun.id
+        );
       }
 
       const upstreamArtifacts = await getArtifactsByAgentRunIds(
@@ -113,6 +133,8 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
         teamMemberId: member.id,
         agentTemplateId: template.id,
         agentTemplateVersion: member.agentTemplateVersion,
+        taskRunId,
+        runtimeStatus: "pending",
         status: "pending",
         inputContext: { ...runContext },
         model: ENV.llmModel,
@@ -121,11 +143,15 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
 
       await updateAgentRun(task.organizationId, run.id, {
         status: "running",
+        runtimeStatus: "running",
         startedAt: new Date(),
       });
 
       const upstreamArtifactText = upstreamArtifacts
-        .map(artifact => `${artifact.title}\n${stringifyArtifactContent(artifact.content)}`)
+        .map(
+          artifact =>
+            `${artifact.title}\n${stringifyArtifactContent(artifact.content)}`
+        )
         .join("\n\n");
 
       const response = await invokeLLM({
@@ -157,9 +183,12 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
         taskId: task.id,
         taskTeamId: team.id,
         agentRunId: run.id,
-        artifactType: member.workflowOrder === members.length ? "report" : "analysis",
+        taskRunId,
+        artifactType:
+          member.workflowOrder === members.length ? "report" : "analysis",
         title: `${template.name} output`,
         content,
+        contentText: content,
         mimeType: "text/plain",
       });
 
@@ -171,6 +200,7 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
 
       await updateAgentRun(task.organizationId, run.id, {
         status: "completed",
+        runtimeStatus: "succeeded",
         output,
         completedAt: new Date(),
       });
@@ -179,9 +209,15 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
       finalArtifactRefs.push(toArtifactReference(artifact));
     }
 
-    const artifacts = await getArtifactsByTaskTeam(task.organizationId, team.id);
+    const artifacts = await getArtifactsByTaskTeam(
+      task.organizationId,
+      team.id
+    );
     const finalResult = artifacts
-      .map(artifact => `## ${artifact.title}\n\n${stringifyArtifactContent(artifact.content)}`)
+      .map(
+        artifact =>
+          `## ${artifact.title}\n\n${stringifyArtifactContent(artifact.content)}`
+      )
       .join("\n\n");
 
     await updateTaskTeamStatus(task.organizationId, team.id, "completed");
@@ -201,14 +237,20 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
   } catch (error) {
     const normalized = normalizeError(error);
     const runs = await getAgentRunsByTaskTeam(task.organizationId, team.id);
-    const activeRun = runs.find(run => run.status === "pending" || run.status === "running");
+    const activeRun = runs.find(
+      run => run.status === "pending" || run.status === "running"
+    );
     if (activeRun) {
       await updateAgentRun(task.organizationId, activeRun.id, {
         status: "failed",
+        runtimeStatus: "failed",
         error: normalized,
         completedAt: new Date(),
       });
-      await incrementAgentTemplateFailure(task.organizationId, activeRun.agentTemplateId);
+      await incrementAgentTemplateFailure(
+        task.organizationId,
+        activeRun.agentTemplateId
+      );
     }
 
     await updateTaskTeamStatus(task.organizationId, team.id, "failed");
@@ -217,6 +259,9 @@ export async function executeTaskTeam(task: Task, taskTeamId: number) {
       error: normalized.message,
       executionCompletedAt: new Date(),
     });
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: normalized.message });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: normalized.message,
+    });
   }
 }

@@ -22,23 +22,56 @@ export async function updateAgentRun(
   await db
     .update(agentRuns)
     .set(updates)
-    .where(and(eq(agentRuns.organizationId, organizationId), eq(agentRuns.id, agentRunId)));
+    .where(
+      and(
+        eq(agentRuns.organizationId, organizationId),
+        eq(agentRuns.id, agentRunId)
+      )
+    );
 }
 
-export async function getAgentRunsByTaskTeam(organizationId: number, taskTeamId: number) {
+export async function getAgentRunsByTaskTeam(
+  organizationId: number,
+  taskTeamId: number
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   return db
     .select()
     .from(agentRuns)
-    .where(and(eq(agentRuns.organizationId, organizationId), eq(agentRuns.taskTeamId, taskTeamId)))
+    .where(
+      and(
+        eq(agentRuns.organizationId, organizationId),
+        eq(agentRuns.taskTeamId, taskTeamId)
+      )
+    )
+    .orderBy(asc(agentRuns.createdAt));
+}
+
+export async function getAgentRunsByTaskRun(
+  organizationId: number,
+  taskRunId: number
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .select()
+    .from(agentRuns)
+    .where(
+      and(
+        eq(agentRuns.organizationId, organizationId),
+        eq(agentRuns.taskRunId, taskRunId)
+      )
+    )
     .orderBy(asc(agentRuns.createdAt));
 }
 
 export async function getCompletedAgentRunsForTeamMembers(
   organizationId: number,
-  teamMemberIds: number[]
+  teamMemberIds: number[],
+  taskRunId?: number
 ) {
   if (teamMemberIds.length === 0) return [];
 
@@ -52,7 +85,8 @@ export async function getCompletedAgentRunsForTeamMembers(
       and(
         eq(agentRuns.organizationId, organizationId),
         eq(agentRuns.status, "completed"),
-        inArray(agentRuns.teamMemberId, teamMemberIds)
+        inArray(agentRuns.teamMemberId, teamMemberIds),
+        taskRunId === undefined ? undefined : eq(agentRuns.taskRunId, taskRunId)
       )
     );
 }

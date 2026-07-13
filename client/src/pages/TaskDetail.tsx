@@ -3,12 +3,31 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Play, CheckCircle, AlertCircle, Clock, Zap, Download, ChevronDown, ChevronUp, Brain, Pencil, RotateCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  Play,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Zap,
+  Download,
+  ChevronDown,
+  ChevronUp,
+  Brain,
+  Pencil,
+  RotateCcw,
+  Square,
+} from "lucide-react";
 import { Link } from "wouter";
 import { Streamdown } from "streamdown";
 import { useTaskPolling } from "@/hooks/useTaskPolling";
@@ -30,10 +49,16 @@ export default function TaskDetail() {
   });
 
   // Use polling hook for real-time updates
-  const { task, logs, isLoading, isError } = useTaskPolling(taskId, queriesEnabled);
-  const agentsQuery = trpc.agents.list.useQuery(undefined, { enabled: queriesEnabled });
+  const { task, logs, runHistory, isLoading, isError } = useTaskPolling(
+    taskId,
+    queriesEnabled
+  );
+  const agentsQuery = trpc.agents.list.useQuery(undefined, {
+    enabled: queriesEnabled,
+  });
   const updateMutation = trpc.tasks.update.useMutation();
   const executeMutation = trpc.tasks.execute.useMutation();
+  const cancelMutation = trpc.tasks.cancelRun.useMutation();
   const utils = trpc.useUtils();
 
   const agents = agentsQuery.data || [];
@@ -48,10 +73,10 @@ export default function TaskDetail() {
   }, [isEditOpen, task]);
 
   const toggleAgent = (agentId: number) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       agentIds: prev.agentIds.includes(agentId)
-        ? prev.agentIds.filter((id) => id !== agentId)
+        ? prev.agentIds.filter(id => id !== agentId)
         : [...prev.agentIds, agentId],
     }));
   };
@@ -68,8 +93,23 @@ export default function TaskDetail() {
         utils.tasks.list.invalidate(),
       ]);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to execute task";
+      const message =
+        error instanceof Error ? error.message : "Failed to execute task";
       toast.error(message);
+    }
+  };
+
+  const handleCancelRun = async () => {
+    const taskRunId = runHistory?.taskRun?.id;
+    if (!taskRunId) return;
+    try {
+      await cancelMutation.mutateAsync({ taskRunId });
+      toast.success("Cancellation requested");
+      await utils.tasks.getTaskRunHistory.invalidate({ taskId: taskId! });
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to cancel run"
+      );
     }
   };
 
@@ -77,8 +117,14 @@ export default function TaskDetail() {
     event.preventDefault();
     if (!taskId) return;
 
-    if (!formData.title || !formData.description || formData.agentIds.length === 0) {
-      toast.error("Please fill in all required fields and select at least one agent");
+    if (
+      !formData.title ||
+      !formData.description ||
+      formData.agentIds.length === 0
+    ) {
+      toast.error(
+        "Please fill in all required fields and select at least one agent"
+      );
       return;
     }
 
@@ -97,7 +143,8 @@ export default function TaskDetail() {
         utils.tasks.list.invalidate(),
       ]);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to update task";
+      const message =
+        error instanceof Error ? error.message : "Failed to update task";
       toast.error(message);
     }
   };
@@ -153,13 +200,21 @@ export default function TaskDetail() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
-        return <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />;
+        return (
+          <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+        );
       case "running":
-        return <Zap className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-pulse" />;
+        return (
+          <Zap className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-pulse" />
+        );
       case "failed":
-        return <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />;
+        return (
+          <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+        );
       case "queued":
-        return <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />;
+        return (
+          <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+        );
       default:
         return null;
     }
@@ -231,6 +286,22 @@ export default function TaskDetail() {
             Edit
           </Button>
         )}
+        {task.status === "running" && runHistory?.taskRun ? (
+          <Button
+            variant="destructive"
+            className="gap-2"
+            onClick={handleCancelRun}
+            disabled={
+              cancelMutation.isPending ||
+              runHistory.taskRun.status === "cancel_requested"
+            }
+          >
+            <Square className="w-4 h-4" />
+            {runHistory.taskRun.status === "cancel_requested"
+              ? "Cancelling..."
+              : "Cancel run"}
+          </Button>
+        ) : null}
       </div>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -244,16 +315,22 @@ export default function TaskDetail() {
               <Input
                 id="detail-task-title"
                 value={formData.title}
-                onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+                onChange={event =>
+                  setFormData({ ...formData, title: event.target.value })
+                }
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="detail-task-description">Task Description *</Label>
+              <Label htmlFor="detail-task-description">
+                Task Description *
+              </Label>
               <Textarea
                 id="detail-task-description"
                 value={formData.description}
-                onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                onChange={event =>
+                  setFormData({ ...formData, description: event.target.value })
+                }
                 rows={4}
               />
             </div>
@@ -262,7 +339,7 @@ export default function TaskDetail() {
               <Label>Assign Agents *</Label>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {agents.length > 0 ? (
-                  agents.map((agent) => (
+                  agents.map(agent => (
                     <div key={agent.id} className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -276,7 +353,9 @@ export default function TaskDetail() {
                         className="flex-1 cursor-pointer text-sm"
                       >
                         <span className="font-medium">{agent.name}</span>
-                        <span className="text-muted-foreground ml-2">({agent.role})</span>
+                        <span className="text-muted-foreground ml-2">
+                          ({agent.role})
+                        </span>
                       </label>
                     </div>
                   ))
@@ -309,26 +388,34 @@ export default function TaskDetail() {
         <h2 className="text-lg font-semibold mb-4">Task Overview</h2>
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
+            <p className="text-sm font-medium text-muted-foreground mb-1">
+              Description
+            </p>
             <p className="text-foreground">{task.description}</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Agents Assigned</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Agents Assigned
+              </p>
               <p className="text-lg font-semibold">
                 {(task.agentIds as number[]).length}
               </p>
             </div>
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Created</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">
+                Created
+              </p>
               <p className="text-sm">
                 {new Date(task.createdAt).toLocaleDateString()}
               </p>
             </div>
             {task.executionStartedAt && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Started</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">
+                  Started
+                </p>
                 <p className="text-sm">
                   {new Date(task.executionStartedAt).toLocaleTimeString()}
                 </p>
@@ -336,7 +423,9 @@ export default function TaskDetail() {
             )}
             {task.executionCompletedAt && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Completed</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">
+                  Completed
+                </p>
                 <p className="text-sm">
                   {new Date(task.executionCompletedAt).toLocaleTimeString()}
                 </p>
@@ -346,12 +435,93 @@ export default function TaskDetail() {
         </div>
       </Card>
 
+      {runHistory?.taskRun ? (
+        <Card className="p-6 card-elevated">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Run timeline</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Durable step state recovers automatically after refresh.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">
+                {runHistory.taskRun.runtime === "openai_agents_sdk"
+                  ? "OpenAI Agents SDK"
+                  : "Legacy"}
+              </Badge>
+              <Badge
+                className={getStatusColor(
+                  runHistory.taskRun.status === "succeeded"
+                    ? "completed"
+                    : runHistory.taskRun.status
+                )}
+              >
+                {runHistory.taskRun.status.replace(/_/g, " ")}
+              </Badge>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {runHistory.members.map(member => {
+              const attempts = runHistory.runs.filter(
+                run => run.teamMemberId === member.id
+              );
+              const latestAttempt = attempts.at(-1);
+              const status = latestAttempt?.runtimeStatus ?? "pending";
+              return (
+                <div
+                  key={member.id}
+                  className="flex gap-3 rounded-lg border p-4"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">
+                    {member.workflowOrder}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-medium">
+                        {member.roleKey.replace(/_/g, " ")}
+                      </p>
+                      <Badge variant="outline">
+                        {status.replace(/_/g, " ")}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {member.expectedOutput}
+                    </p>
+                    {latestAttempt ? (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Attempt {latestAttempt.attempt}
+                        {latestAttempt.errorCode
+                          ? ` · ${latestAttempt.errorCode}`
+                          : ""}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {runHistory.taskRun.status === "running" ? (
+            <div className="mt-4 flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
+              <Zap className="h-4 w-4 animate-pulse" />
+              {runHistory.events.at(-1)?.type.replace(/_/g, " ") ??
+                "Preparing next step"}
+            </div>
+          ) : null}
+          <p className="mt-4 text-xs text-muted-foreground">
+            Correlation ID: {runHistory.taskRun.correlationId}
+          </p>
+        </Card>
+      ) : null}
+
       {/* Execution Logs with Thought Process */}
       {isLoading ? (
         <Card className="p-6">
           <Skeleton className="h-6 w-1/4 mb-4" />
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map(i => (
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
@@ -366,7 +536,7 @@ export default function TaskDetail() {
             {logs.map((log, index) => {
               const isExpanded = expandedLogs.has(log.id);
               const isThinking = isThinkingStep(log.action);
-              
+
               return (
                 <div
                   key={log.id}
@@ -377,7 +547,9 @@ export default function TaskDetail() {
                     className="w-full flex gap-4 p-4 bg-background hover:bg-muted/50 transition-colors text-left"
                   >
                     <div className="flex flex-col items-center flex-shrink-0">
-                      <span className="text-2xl">{getActionIcon(log.action)}</span>
+                      <span className="text-2xl">
+                        {getActionIcon(log.action)}
+                      </span>
                       {index < logs.length - 1 && (
                         <div className="w-0.5 h-8 bg-border mt-2" />
                       )}
@@ -389,7 +561,10 @@ export default function TaskDetail() {
                             {log.action.replace(/_/g, " ")}
                           </h4>
                           {isThinking && (
-                            <Badge variant="outline" className="text-xs flex-shrink-0">
+                            <Badge
+                              variant="outline"
+                              className="text-xs flex-shrink-0"
+                            >
                               Thought
                             </Badge>
                           )}
@@ -405,13 +580,15 @@ export default function TaskDetail() {
                           )}
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-2">{log.details}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {log.details}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-2">
                         {new Date(log.createdAt).toLocaleTimeString()}
                       </p>
                     </div>
                   </button>
-                  
+
                   {/* Expanded Details */}
                   {isExpanded && (
                     <div className="border-t border-border bg-muted/30 p-4">
@@ -436,15 +613,21 @@ export default function TaskDetail() {
                             </p>
                           </div>
                         </div>
-                        
+
                         {/* Metadata */}
                         <div className="grid grid-cols-2 gap-3 text-xs">
                           <div>
-                            <p className="text-muted-foreground font-medium">Step Number</p>
-                            <p className="text-foreground font-semibold">{log.step}</p>
+                            <p className="text-muted-foreground font-medium">
+                              Step Number
+                            </p>
+                            <p className="text-foreground font-semibold">
+                              {log.step}
+                            </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground font-medium">Timestamp</p>
+                            <p className="text-muted-foreground font-medium">
+                              Timestamp
+                            </p>
                             <p className="text-foreground font-semibold">
                               {new Date(log.createdAt).toLocaleTimeString()}
                             </p>
