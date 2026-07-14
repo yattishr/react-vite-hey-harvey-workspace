@@ -1,28 +1,32 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #fafaf9;
-  --color-foreground: #0f0f0f;
+  --color-background: #f7f8fc;
+  --color-foreground: #10131a;
   --color-card: #ffffff;
-  --color-card-foreground: #0f0f0f;
+  --color-card-foreground: #10131a;
   --color-popover: #ffffff;
-  --color-popover-foreground: #0f0f0f;
-  --color-muted: #e0e0de;
-  --color-muted-foreground: #666666;
-  --color-accent: #0066ff;
-  --color-accent-foreground: #ffffff;
-  --color-destructive: #ff4444;
+  --color-popover-foreground: #10131a;
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #eef2ff;
+  --color-secondary-foreground: #1749bf;
+  --color-muted: #f0f3f9;
+  --color-muted-foreground: #626b7a;
+  --color-accent: #e7efff;
+  --color-accent-foreground: #1749bf;
+  --color-destructive: #dc4c64;
   --color-destructive-foreground: #ffffff;
-  --color-border: #ebebeb;
+  --color-border: #e2e7f0;
   --color-input: #ffffff;
-  --color-ring: #0066ff;
-  --color-sidebar: #ffffff;
-  --color-sidebar-foreground: #0f0f0f;
-  --color-sidebar-accent: #f4f4f3;
-  --color-sidebar-accent-foreground: #0f0f0f;
-  --color-sidebar-border: #ebebeb;
-  --color-sidebar-ring: #0066ff;
-  --radius-base: 0.5rem;
+  --color-ring: #2563eb;
+  --color-sidebar: #f8faff;
+  --color-sidebar-foreground: #10131a;
+  --color-sidebar-accent: #ffffff;
+  --color-sidebar-accent-foreground: #1749bf;
+  --color-sidebar-border: #e2e7f0;
+  --color-sidebar-ring: #2563eb;
+  --radius-base: 0.875rem;
 }
 
 @layer base {
@@ -62,11 +66,12 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rounding" 1;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   /* Typography - Refined and elegant */
   h1 {
-    @apply text-4xl font-bold tracking-tight;
+    @apply font-bold tracking-tight;
   }
 
   h2 {
@@ -136,25 +141,33 @@
   }
 
   button:active {
-    @apply scale-95;
+    @apply scale-[0.98];
   }
 
   /* Elegant card styling */
   .card-elevated {
-    @apply rounded-lg border border-border bg-card shadow-sm transition-shadow hover:shadow-md;
+    @apply border border-border bg-card transition-all;
+    border-radius: 1.375rem;
+    box-shadow: 0 8px 24px rgba(21, 35, 70, 0.07);
   }
 
   .card-subtle {
-    @apply rounded-lg bg-card/50 border border-border/50;
+    @apply bg-white/60 border border-border;
+    border-radius: 1.375rem;
+    box-shadow: 0 8px 24px rgba(21, 35, 70, 0.05);
   }
 
   /* Refined button states */
   .btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg bg-accent text-accent-foreground font-medium transition-all hover:bg-accent/90 active:scale-95;
+    @apply inline-flex items-center justify-center px-4 py-2 text-white font-semibold transition-all active:scale-[0.98];
+    border-radius: 0.875rem;
+    background: linear-gradient(135deg, #2563eb, #1749bf);
+    box-shadow: 0 12px 26px rgba(37, 99, 235, 0.2);
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg border border-border bg-background text-foreground font-medium transition-all hover:bg-muted;
+    @apply inline-flex items-center justify-center px-4 py-2 border border-border bg-white text-foreground font-semibold transition-all hover:bg-muted;
+    border-radius: 0.875rem;
   }
 
   /* Status badges */
@@ -227,7 +240,7 @@
   }
 
   .shadow-elevated {
-    @apply shadow-md;
+    box-shadow: 0 18px 42px rgba(31, 52, 108, 0.13);
   }
 
   /* Text truncation utilities */
@@ -243,5 +256,81 @@
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
+  }
+}
+
+@layer components {
+  .harvey-app-shell {
+    background:
+      radial-gradient(circle at 78% 0%, rgba(124, 58, 237, 0.08), transparent 25rem),
+      radial-gradient(circle at 20% 5%, rgba(37, 99, 235, 0.08), transparent 27rem),
+      #f7f8fc;
+  }
+
+  .harvey-app-main {
+    min-height: 100svh;
+    padding: clamp(1.25rem, 3vw, 3rem);
+  }
+
+  .harvey-app-page {
+    width: min(100%, 1440px);
+    margin-inline: auto;
+  }
+
+  .harvey-app-page h1 {
+    color: #10131a;
+    font-size: clamp(2.35rem, 5vw, 4.25rem);
+    line-height: 1.02;
+    letter-spacing: -0.055em;
+  }
+
+  .harvey-app-page h2 {
+    color: #171b24;
+    letter-spacing: -0.035em;
+  }
+
+  .harvey-app-page > div:first-child > div:first-child > p,
+  .harvey-app-page > div:first-child > p {
+    max-width: 48rem;
+    line-height: 1.7;
+  }
+
+  .harvey-brand-mark {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 auto;
+    border-radius: 0.75rem;
+    color: white;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
+  }
+
+  .harvey-section-label {
+    color: #1749bf;
+    font-size: 0.7rem;
+    font-weight: 850;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 767px) {
+    .harvey-app-main {
+      padding: 1rem 0.75rem 2rem;
+    }
+
+    .harvey-app-page h1 {
+      font-size: clamp(2.25rem, 12vw, 3.4rem);
+    }
+
+    .harvey-app-page > div:first-child {
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .harvey-app-page div:has(> h1) {
+      flex-wrap: wrap;
+    }
   }
 }

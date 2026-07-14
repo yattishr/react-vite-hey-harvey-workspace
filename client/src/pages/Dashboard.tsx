@@ -55,8 +55,9 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
+          <div className="harvey-section-label mb-3">Workspace overview</div>
           <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-2">
             Welcome back, {user?.name || "User"}. Manage your AI agents and tasks.

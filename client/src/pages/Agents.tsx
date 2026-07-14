@@ -96,8 +96,9 @@ export default function Agents() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
+          <div className="harvey-section-label mb-3">Your AI team</div>
           <h1 className="text-4xl font-bold tracking-tight">Agents</h1>
           <p className="text-muted-foreground mt-2">
             Create and manage your AI agents. Each agent has a specific role and goal.

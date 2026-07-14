@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { clearActiveOrganizationId, supabase } from "@/lib/supabase";
-import { Mail } from "lucide-react";
+import { Mail, Zap } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 type AuthMode = "signin" | "signup" | "magic";
@@ -86,6 +86,9 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
+          <div className="harvey-brand-mark mb-2">
+            <Zap className="h-4 w-4 fill-current" />
+          </div>
           <DialogTitle>Sign in to Hey Harvey</DialogTitle>
           <DialogDescription>
             Use your email to access your workspace.

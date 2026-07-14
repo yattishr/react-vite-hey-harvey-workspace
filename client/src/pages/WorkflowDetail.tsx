@@ -83,13 +83,14 @@ export default function WorkflowDetail() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Link href="/workflows">
           <Button variant="outline" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div className="flex-1">
+          <div className="harvey-section-label mb-2">Workflow workspace</div>
           <div className="flex flex-wrap items-center gap-2">
             <GitBranch className="h-5 w-5 text-primary" />
             <h1 className="text-3xl font-bold tracking-tight">{workflow.name}</h1>

@@ -99,6 +99,7 @@ export default function TaskFactory() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
+          <div className="harvey-section-label mb-3">From goal to done</div>
           <div className="flex items-center gap-2">
             <WandSparkles className="h-6 w-6 text-primary" />
             <h1 className="text-3xl font-bold tracking-tight">Build My Team</h1>

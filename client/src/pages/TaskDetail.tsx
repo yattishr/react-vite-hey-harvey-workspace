@@ -261,13 +261,14 @@ export default function TaskDetail() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Link href="/tasks">
           <Button variant="outline" size="icon">
             <ArrowLeft className="w-4 h-4" />
           </Button>
         </Link>
         <div className="flex-1">
+          <div className="harvey-section-label mb-2">Task workspace</div>
           <div className="flex items-center gap-3 mb-2">
             {getStatusIcon(task.status)}
             <h1 className="text-3xl font-bold tracking-tight">{task.title}</h1>

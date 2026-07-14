@@ -88,6 +88,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider
+      className="harvey-app-shell"
       style={
         {
           "--sidebar-width": `${sidebarWidth}px`,
@@ -162,30 +163,42 @@ function DashboardLayoutContent({
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           collapsible="icon"
-          className="border-r-0"
+          className="border-r border-sidebar-border bg-white/65 shadow-[12px_0_42px_rgba(31,52,108,0.06)] backdrop-blur-xl"
           disableTransition={isResizing}
         >
-          <SidebarHeader className="h-16 justify-center">
-            <div className="flex items-center gap-3 px-2 transition-all w-full">
+          <SidebarHeader className="h-[74px] justify-center border-b border-sidebar-border/80 px-3 group-data-[collapsible=icon]:px-1.5">
+            <div className="flex items-center gap-3 transition-all w-full">
               <button
+                type="button"
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
+                className="harvey-brand-mark h-9 w-9 border-0"
+                aria-label={isCollapsed ? "Expand navigation" : "Collapse navigation"}
               >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                <Zap className="h-4 w-4 fill-current" />
               </button>
               {!isCollapsed ? (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-semibold tracking-tight truncate">
-                    Navigation
-                  </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-extrabold tracking-[-0.025em]">
+                    Hey Harvey Workspace
+                  </div>
+                  <div className="harvey-section-label mt-0.5 text-[0.55rem]">AI workspace</div>
                 </div>
+              ) : null}
+              {!isCollapsed ? (
+                <button
+                  onClick={toggleSidebar}
+                  className="h-8 w-8 flex items-center justify-center hover:bg-white rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
+                  aria-label="Collapse navigation"
+                >
+                  <PanelLeft className="h-4 w-4 text-muted-foreground" />
+                </button>
               ) : null}
             </div>
           </SidebarHeader>
 
-          <SidebarContent className="gap-0">
-            <SidebarMenu className="px-2 py-1">
+          <SidebarContent className="gap-0 pt-5">
+            {!isCollapsed && <div className="harvey-section-label px-5 pb-2">Workspace</div>}
+            <SidebarMenu className="px-3 py-1">
               {menuItems.map(item => {
                 const isActive =
                   location === item.path || location.startsWith(`${item.path}/`);
@@ -200,7 +213,7 @@ function DashboardLayoutContent({
                         }
                       }}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
+                      className="h-11 rounded-xl px-3 font-semibold transition-all data-[active=true]:bg-white data-[active=true]:text-[#1749bf] data-[active=true]:shadow-[0_7px_20px_rgba(31,52,108,0.09)] hover:bg-white/80"
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
@@ -213,12 +226,12 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="border-t border-sidebar-border/80 p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
+                <button className="flex items-center gap-3 rounded-xl px-1 py-1.5 hover:bg-white transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Avatar className="h-9 w-9 border border-[#dce5fb] shadow-sm shrink-0">
+                    <AvatarFallback className="bg-gradient-to-br from-[#dce9ff] to-[#eee5ff] text-xs font-bold text-[#1749bf]">
                       {user?.name?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -254,22 +267,28 @@ function DashboardLayoutContent({
         />
       </div>
 
-      <SidebarInset>
+      <SidebarInset className="bg-transparent">
         {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+          <div className="flex border-b border-border/80 h-16 items-center justify-between bg-white/85 px-3 shadow-sm backdrop-blur-xl sticky top-0 z-40">
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
+              <SidebarTrigger className="h-10 w-10 rounded-xl bg-white" />
               <div className="flex items-center gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground">
+                <div className="harvey-brand-mark h-9 w-9">
+                  <Zap className="h-4 w-4 fill-current" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-extrabold tracking-tight text-foreground">
                     {activeMenuItem?.label ?? "Menu"}
                   </span>
+                  <span className="text-[0.6rem] font-bold uppercase tracking-[0.11em] text-[#1749bf]">Hey Harvey</span>
                 </div>
               </div>
             </div>
           </div>
         )}
-        <main className="flex-1 p-4">{children}</main>
+        <main className="harvey-app-main flex-1">
+          <div className="harvey-app-page">{children}</div>
+        </main>
       </SidebarInset>
     </>
   );

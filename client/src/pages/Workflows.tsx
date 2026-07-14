@@ -102,8 +102,9 @@ export default function Workflows() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
+          <div className="harvey-section-label mb-3">Repeatable work</div>
           <h1 className="text-3xl font-bold tracking-tight">Workflows</h1>
           <p className="text-muted-foreground mt-2">
             Create and manage multi-agent collaboration workflows
