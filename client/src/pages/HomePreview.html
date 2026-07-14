@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Hey Harvey Workspace helps you build an AI team, give it a goal, and get the work done." />
+  <title>Hey Harvey Workspace</title>
+
+  <style>
+    :root {
+      --bg: #f7f8fc;
+      --surface: #ffffff;
+      --surface-soft: #f2f5ff;
+      --surface-warm: #fff7ef;
+      --ink: #10131a;
+      --muted: #626b7a;
+      --line: #e6e9f0;
+      --blue: #2563eb;
+      --blue-dark: #1749bf;
+      --blue-soft: #dce9ff;
+      --violet: #7c3aed;
+      --violet-soft: #eee5ff;
+      --coral: #f97360;
+      --coral-soft: #ffe6df;
+      --green: #168f63;
+      --green-soft: #dff5eb;
+      --amber: #d97706;
+      --amber-soft: #fff0d4;
+      --shadow-sm: 0 8px 24px rgba(21, 35, 70, 0.08);
+      --shadow-lg: 0 24px 70px rgba(31, 52, 108, 0.16);
+      --radius-sm: 14px;
+      --radius-md: 22px;
+      --radius-lg: 32px;
+      --max: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(37, 99, 235, 0.10), transparent 26%),
+        radial-gradient(circle at 92% 8%, rgba(124, 58, 237, 0.09), transparent 23%),
+        var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .container {
+      width: min(var(--max), calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(16px);
+      background: rgba(247, 248, 252, 0.82);
+      border-bottom: 1px solid rgba(230, 233, 240, 0.88);
+    }
+
+    .nav {
+      min-height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      font-size: 1.08rem;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      color: white;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .nav-links a:hover {
+      color: var(--ink);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 20px;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      font-weight: 750;
+      font-size: 0.95rem;
+      transition: 180ms ease;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), var(--blue-dark));
+      color: white;
+      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.24);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 18px 36px rgba(37, 99, 235, 0.32);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.84);
+      color: var(--ink);
+      border-color: var(--line);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-ghost {
+      color: var(--ink);
+      background: transparent;
+    }
+
+    .hero {
+      padding: 92px 0 82px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 30px auto auto 50%;
+      width: 760px;
+      height: 760px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.09), transparent 66%);
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: 0.92fr 1.08fr;
+      gap: 72px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(220, 233, 255, 0.86);
+      color: var(--blue-dark);
+      font-size: 0.78rem;
+      font-weight: 850;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      max-width: 650px;
+      font-size: clamp(3.3rem, 6vw, 5.8rem);
+      line-height: 0.98;
+      letter-spacing: -0.065em;
+      text-wrap: balance;
+    }
+
+    .hero h1 .accent {
+      background: linear-gradient(110deg, var(--blue), var(--violet), var(--coral));
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .hero-copy {
+      max-width: 630px;
+      margin-top: 26px;
+      color: var(--muted);
+      font-size: 1.16rem;
+      line-height: 1.72;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 34px;
+    }
+
+    .trust-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: center;
+      margin-top: 25px;
+      color: #596171;
+      font-size: 0.9rem;
+    }
+
+    .trust-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .trust-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 5px rgba(22, 143, 99, 0.11);
+    }
+
+    .workspace-shell {
+      position: relative;
+      padding: 14px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow-lg);
+      transform: rotate(1.1deg);
+    }
+
+    .workspace-shell::before {
+      content: "";
+      position: absolute;
+      inset: -20px;
+      z-index: -1;
+      border-radius: 36px;
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.19), rgba(124, 58, 237, 0.11), rgba(249, 115, 96, 0.13));
+      filter: blur(28px);
+    }
+
+    .workspace {
+      overflow: hidden;
+      border-radius: 20px;
+      background: #fbfcff;
+      border: 1px solid var(--line);
+    }
+
+    .workspace-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: white;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #d8dce5;
+    }
+
+    .workspace-title {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #5f6877;
+    }
+
+    .workspace-body {
+      display: grid;
+      grid-template-columns: 0.78fr 1.22fr;
+      min-height: 480px;
+    }
+
+    .workspace-sidebar {
+      padding: 18px 14px;
+      border-right: 1px solid var(--line);
+      background: #f7f9fd;
+    }
+
+    .workspace-nav-label {
+      padding: 5px 8px 10px;
+      color: #8991a0;
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .workspace-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 10px;
+      margin-bottom: 5px;
+      border-radius: 10px;
+      color: #687181;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .workspace-nav-item.active {
+      background: white;
+      color: var(--blue);
+      box-shadow: 0 4px 13px rgba(29, 54, 113, 0.08);
+    }
+
+    .nav-icon {
+      width: 23px;
+      height: 23px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #eef2f8;
+      font-size: 0.72rem;
+    }
+
+    .workspace-main {
+      padding: 21px;
+    }
+
+    .mini-kicker {
+      color: var(--blue);
+      font-size: 0.69rem;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .workspace-main h3 {
+      margin: 3px 0 6px;
+      font-size: 1.2rem;
+      letter-spacing: -0.03em;
+    }
+
+    .workspace-main > p {
+      margin: 0;
+      color: #778090;
+      font-size: 0.76rem;
+    }
+
+    .prompt-card {
+      margin-top: 17px;
+      padding: 15px;
+      border-radius: 15px;
+      background: white;
+      border: 1px solid var(--line);
+      box-shadow: 0 8px 20px rgba(31, 52, 108, 0.06);
+    }
+
+    .prompt-label {
+      color: #70798a;
+      font-size: 0.69rem;
+      font-weight: 800;
+      margin-bottom: 7px;
+    }
+
+    .prompt-text {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .harvey-reply {
+      margin-top: 13px;
+      padding: 14px;
+      border-radius: 15px;
+      background: linear-gradient(145deg, #eef4ff, #f5f0ff);
+      border: 1px solid #dce5fb;
+    }
+
+    .reply-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.71rem;
+      font-weight: 850;
+    }
+
+    .status-pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 0.61rem;
+      font-weight: 850;
+    }
+
+    .agent-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 11px;
+    }
+
+    .agent {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 10px;
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid rgba(220, 226, 240, 0.82);
+      font-size: 0.69rem;
+    }
+
+    .agent-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 780;
+    }
+
+    .agent-avatar {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      font-size: 0.68rem;
+      font-weight: 900;
+    }
+
+    .avatar-blue { background: var(--blue-soft); color: var(--blue); }
+    .avatar-violet { background: var(--violet-soft); color: var(--violet); }
+    .avatar-coral { background: var(--coral-soft); color: var(--coral); }
+    .avatar-green { background: var(--green-soft); color: var(--green); }
+
+    .agent-state {
+      color: #7c8492;
+      font-size: 0.62rem;
+    }
+
+    .workspace-cta {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 12px;
+    }
+
+    .mini-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 11px;
+      border-radius: 9px;
+      color: white;
+      background: var(--blue);
+      font-size: 0.66rem;
+      font-weight: 850;
+    }
+
+    section {
+      padding: 94px 0;
+    }
+
+    .section-kicker {
+      color: var(--blue);
+      font-size: 0.8rem;
+      font-weight: 850;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .section-head {
+      max-width: 760px;
+      margin-bottom: 46px;
+    }
+
+    .section-head.center {
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(2.35rem, 4vw, 4.1rem);
+      line-height: 1.05;
+      letter-spacing: -0.055em;
+      text-wrap: balance;
+    }
+
+    .section-head p {
+      margin: 20px 0 0;
+      color: var(--muted);
+      font-size: 1.06rem;
+      line-height: 1.75;
+    }
+
+    .steps-section {
+      background: var(--surface);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .step-card {
+      position: relative;
+      padding: 30px;
+      border-radius: var(--radius-md);
+      background: #fbfcff;
+      border: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .step-card::after {
+      content: attr(data-step);
+      position: absolute;
+      right: 20px;
+      top: 5px;
+      color: rgba(37, 99, 235, 0.07);
+      font-size: 6.4rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .step-icon {
+      width: 50px;
+      height: 50px;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      margin-bottom: 22px;
+      font-weight: 900;
+      font-size: 1.1rem;
+    }
+
+    .step-card h3,
+    .feature-card h3,
+    .outcome-card h3 {
+      margin: 0 0 10px;
+      font-size: 1.18rem;
+      letter-spacing: -0.025em;
+    }
+
+    .step-card p,
+    .feature-card p,
+    .outcome-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.94rem;
+      line-height: 1.7;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 22px;
+    }
+
+    .feature-card {
+      grid-column: span 4;
+      min-height: 235px;
+      padding: 28px;
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .feature-card:nth-child(1),
+    .feature-card:nth-child(5) {
+      grid-column: span 5;
+    }
+
+    .feature-card:nth-child(2),
+    .feature-card:nth-child(4) {
+      grid-column: span 7;
+    }
+
+    .feature-icon {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 28px;
+      border-radius: 15px;
+      font-size: 1rem;
+      font-weight: 900;
+    }
+
+    .feature-meta {
+      margin-top: 25px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #596171;
+      font-size: 0.82rem;
+      font-weight: 760;
+    }
+
+    .feature-meta::before {
+      content: "✓";
+      display: grid;
+      place-items: center;
+      width: 21px;
+      height: 21px;
+      border-radius: 50%;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 0.72rem;
+    }
+
+    .outcomes-section {
+      background:
+        linear-gradient(180deg, rgba(240, 244, 255, 0.85), rgba(247, 248, 252, 0.7));
+    }
+
+    .outcomes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .outcome-card {
+      position: relative;
+      min-height: 290px;
+      padding: 28px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: white;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .outcome-card::before {
+      content: "";
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      right: -40px;
+      bottom: -45px;
+      border-radius: 50%;
+      background: var(--card-glow, rgba(37, 99, 235, 0.08));
+    }
+
+    .outcome-number {
+      display: inline-flex;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #f2f4f8;
+      color: #6d7480;
+      font-size: 0.66rem;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 62px;
+    }
+
+    .outcome-link {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 21px;
+      color: var(--blue);
+      font-size: 0.84rem;
+      font-weight: 800;
+    }
+
+    .connectors-wrap {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 66px;
+      align-items: center;
+    }
+
+    .connector-cloud {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      padding: 28px;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(145deg, #eef4ff, #f7f3ff);
+      border: 1px solid #dfe6f5;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .connector {
+      min-height: 112px;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      border-radius: 17px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid rgba(221, 227, 240, 0.94);
+      font-size: 0.86rem;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .connector span {
+      display: block;
+      margin-top: 7px;
+      color: #808897;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+
+    .connector-list {
+      display: grid;
+      gap: 16px;
+      margin-top: 30px;
+    }
+
+    .connector-point {
+      display: flex;
+      gap: 13px;
+      align-items: flex-start;
+    }
+
+    .check {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 0.76rem;
+      font-weight: 900;
+    }
+
+    .connector-point strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 0.96rem;
+    }
+
+    .connector-point span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .trust-section {
+      padding-top: 10px;
+    }
+
+    .trust-panel {
+      position: relative;
+      overflow: hidden;
+      padding: 58px;
+      border-radius: var(--radius-lg);
+      background: #10182b;
+      color: white;
+      box-shadow: 0 30px 80px rgba(17, 24, 39, 0.24);
+    }
+
+    .trust-panel::before {
+      content: "";
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      right: -170px;
+      top: -240px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(74, 124, 255, 0.52), transparent 68%);
+    }
+
+    .trust-panel::after {
+      content: "";
+      position: absolute;
+      width: 340px;
+      height: 340px;
+      left: -130px;
+      bottom: -220px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(249, 115, 96, 0.28), transparent 68%);
+    }
+
+    .trust-panel-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 70px;
+      align-items: center;
+    }
+
+    .trust-panel h2 {
+      margin: 0;
+      font-size: clamp(2.4rem, 4.4vw, 4.3rem);
+      line-height: 1.04;
+      letter-spacing: -0.055em;
+    }
+
+    .trust-panel p {
+      color: #c7d0e4;
+      max-width: 620px;
+      font-size: 1rem;
+      margin-top: 18px;
+    }
+
+    .trust-cards {
+      display: grid;
+      gap: 13px;
+    }
+
+    .trust-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 17px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      backdrop-filter: blur(10px);
+    }
+
+    .trust-card-icon {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.13);
+      font-weight: 900;
+    }
+
+    .trust-card strong {
+      display: block;
+      font-size: 0.92rem;
+    }
+
+    .trust-card span {
+      display: block;
+      margin-top: 2px;
+      color: #b7c0d4;
+      font-size: 0.78rem;
+    }
+
+    .final-cta {
+      padding: 110px 0;
+    }
+
+    .cta-box {
+      text-align: center;
+      padding: 76px 30px;
+      border-radius: var(--radius-lg);
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.9), transparent 34%),
+        linear-gradient(135deg, #eaf1ff, #f5efff 56%, #fff0ea);
+      border: 1px solid #dfe4ef;
+    }
+
+    .cta-box h2 {
+      max-width: 860px;
+      margin: 0 auto;
+      font-size: clamp(2.5rem, 5vw, 4.8rem);
+      line-height: 1.02;
+      letter-spacing: -0.06em;
+    }
+
+    .cta-box p {
+      max-width: 620px;
+      margin: 20px auto 0;
+      color: var(--muted);
+      font-size: 1.06rem;
+    }
+
+    .cta-box .hero-actions {
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    footer {
+      padding: 30px 0 45px;
+      border-top: 1px solid var(--line);
+      color: #707887;
+      font-size: 0.86rem;
+    }
+
+    .footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 22px;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 22px;
+    }
+
+    @media (max-width: 980px) {
+      .nav-links {
+        display: none;
+      }
+
+      .hero-grid,
+      .connectors-wrap,
+      .trust-panel-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-grid {
+        gap: 54px;
+      }
+
+      .workspace-shell {
+        transform: none;
+      }
+
+      .steps,
+      .outcomes-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .feature-card,
+      .feature-card:nth-child(1),
+      .feature-card:nth-child(2),
+      .feature-card:nth-child(4),
+      .feature-card:nth-child(5) {
+        grid-column: span 12;
+      }
+
+      .trust-panel {
+        padding: 42px 28px;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .container {
+        width: min(var(--max), calc(100% - 24px));
+      }
+
+      .nav {
+        min-height: 66px;
+      }
+
+      .nav-actions .btn-ghost {
+        display: none;
+      }
+
+      .hero {
+        padding-top: 68px;
+      }
+
+      .hero h1 {
+        font-size: clamp(3rem, 16vw, 4.6rem);
+      }
+
+      .hero-copy {
+        font-size: 1rem;
+      }
+
+      .hero-actions .btn {
+        width: 100%;
+      }
+
+      .workspace-body {
+        grid-template-columns: 1fr;
+      }
+
+      .workspace-sidebar {
+        display: none;
+      }
+
+      .workspace-main {
+        padding: 16px;
+      }
+
+      .connector-cloud {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 18px;
+      }
+
+      .section-head h2 {
+        font-size: 2.55rem;
+      }
+
+      .footer-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a href="#" class="brand" aria-label="Hey Harvey Workspace home">
+        <span class="brand-mark">ϟ</span>
+        <span>Hey Harvey Workspace</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#how-it-works">How it works</a>
+        <a href="#outcomes">What Harvey can do</a>
+        <a href="#connectors">Connections</a>
+        <a href="#control">Control</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="#" class="btn btn-ghost">Sign in</a>
+        <a href="#" class="btn btn-primary">Build My Team</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <div class="eyebrow">Your AI workspace</div>
+
+          <h1>
+            Build the team.<br />
+            Give it a goal.<br />
+            <span class="accent">Get the work done.</span>
+          </h1>
+
+          <p class="hero-copy">
+            Tell Harvey what you want to accomplish. It will assemble the right AI team,
+            connect to the tools you already use, and coordinate the work from start to finish.
+          </p>
+
+          <div class="hero-actions">
+            <a href="#" class="btn btn-primary">
+              Build My Team
+              <span aria-hidden="true">→</span>
+            </a>
+            <a href="#how-it-works" class="btn btn-secondary">
+              See How It Works
+            </a>
+          </div>
+
+          <div class="trust-line">
+            <span class="trust-item"><span class="trust-dot"></span>You stay in control</span>
+            <span class="trust-item">Review the plan</span>
+            <span class="trust-item">Approve important actions</span>
+          </div>
+        </div>
+
+        <div class="workspace-shell" aria-label="Product preview">
+          <div class="workspace">
+            <div class="workspace-topbar">
+              <div class="dots">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+              <div class="workspace-title">Hey Harvey Workspace</div>
+              <div style="width: 31px;"></div>
+            </div>
+
+            <div class="workspace-body">
+              <aside class="workspace-sidebar">
+                <div class="workspace-nav-label">Workspace</div>
+                <div class="workspace-nav-item active">
+                  <span class="nav-icon">⌂</span>
+                  Home
+                </div>
+                <div class="workspace-nav-item">
+                  <span class="nav-icon">◎</span>
+                  My Teams
+                </div>
+                <div class="workspace-nav-item">
+                  <span class="nav-icon">✓</span>
+                  Work in progress
+                </div>
+                <div class="workspace-nav-item">
+                  <span class="nav-icon">⌁</span>
+                  Connected tools
+                </div>
+                <div class="workspace-nav-item">
+                  <span class="nav-icon">↺</span>
+                  History
+                </div>
+              </aside>
+
+              <div class="workspace-main">
+                <div class="mini-kicker">Good morning, Professor</div>
+                <h3>What would you like to accomplish today?</h3>
+                <p>Describe the outcome. Harvey will shape the team and the plan.</p>
+
+                <div class="prompt-card">
+                  <div class="prompt-label">Your goal</div>
+                  <div class="prompt-text">
+                    Create a launch campaign for our new customer training product.
+                  </div>
+                </div>
+
+                <div class="harvey-reply">
+                  <div class="reply-header">
+                    <span>Harvey has assembled your team</span>
+                    <span class="status-pill">Ready to review</span>
+                  </div>
+
+                  <div class="agent-list">
+                    <div class="agent">
+                      <div class="agent-info">
+                        <span class="agent-avatar avatar-blue">R</span>
+                        Researcher
+                      </div>
+                      <span class="agent-state">Audience & competitors</span>
+                    </div>
+
+                    <div class="agent">
+                      <div class="agent-info">
+                        <span class="agent-avatar avatar-violet">S</span>
+                        Campaign Strategist
+                      </div>
+                      <span class="agent-state">Positioning & channels</span>
+                    </div>
+
+                    <div class="agent">
+                      <div class="agent-info">
+                        <span class="agent-avatar avatar-coral">W</span>
+                        Content Writer
+                      </div>
+                      <span class="agent-state">Campaign assets</span>
+                    </div>
+
+                    <div class="agent">
+                      <div class="agent-info">
+                        <span class="agent-avatar avatar-green">P</span>
+                        Project Coordinator
+                      </div>
+                      <span class="agent-state">Timeline & delivery</span>
+                    </div>
+                  </div>
+
+                  <div class="workspace-cta">
+                    <span class="mini-btn">Review the plan →</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="steps-section">
+      <div class="container">
+        <div class="section-head center">
+          <div class="section-kicker">From goal to done</div>
+          <h2>Start with the outcome, not the setup.</h2>
+          <p>
+            You do not need to understand agents, workflows, or automation.
+            Describe what you want to achieve and Harvey turns it into a clear plan of action.
+          </p>
+        </div>
+
+        <div class="steps">
+          <article class="step-card" data-step="1">
+            <div class="step-icon avatar-blue">01</div>
+            <h3>Describe the goal</h3>
+            <p>
+              Tell Harvey what you are trying to accomplish in plain language,
+              just as you would explain it to a capable colleague.
+            </p>
+          </article>
+
+          <article class="step-card" data-step="2">
+            <div class="step-icon avatar-violet">02</div>
+            <h3>Build the team</h3>
+            <p>
+              Harvey creates the right mix of AI specialists, gives each one a role,
+              and prepares a plan for you to review.
+            </p>
+          </article>
+
+          <article class="step-card" data-step="3">
+            <div class="step-icon avatar-green">03</div>
+            <h3>Guide the work</h3>
+            <p>
+              Follow progress, answer questions, approve important actions,
+              and receive the completed work in one place.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="section-head">
+          <div class="section-kicker">One workspace, less busywork</div>
+          <h2>Harvey keeps the work moving.</h2>
+          <p>
+            The clever machinery stays behind the curtain. You see the plan,
+            the people doing the work, the decisions that need you, and the final result.
+          </p>
+        </div>
+
+        <div class="features-grid">
+          <article class="feature-card">
+            <div class="feature-icon avatar-blue">✦</div>
+            <h3>Build the right team</h3>
+            <p>
+              Create a team of AI specialists suited to the exact work you need done.
+            </p>
+            <div class="feature-meta">Roles shaped around the outcome</div>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon avatar-violet">↳</div>
+            <h3>Turn goals into action</h3>
+            <p>
+              Harvey breaks large objectives into practical steps, assigns the work,
+              and keeps the team focused on the result.
+            </p>
+            <div class="feature-meta">A clear plan before work begins</div>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon avatar-coral">⌁</div>
+            <h3>Connect your business tools</h3>
+            <p>
+              Let the team work with the platforms and information your business already uses.
+            </p>
+            <div class="feature-meta">Less copying, pasting, and chasing</div>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon avatar-green">◎</div>
+            <h3>Guide the work</h3>
+            <p>
+              Review plans, answer questions, redirect the team, and add human judgment
+              where it matters most.
+            </p>
+            <div class="feature-meta">You remain the decision-maker</div>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" style="background: var(--amber-soft); color: var(--amber);">▤</div>
+            <h3>See progress clearly</h3>
+            <p>
+              Know what is happening, what has been completed, and what needs your attention.
+            </p>
+            <div class="feature-meta">No black box theatre</div>
+          </article>
+
+          <article class="feature-card">
+            <div class="feature-icon" style="background: #e8eafb; color: #6268d4;">↺</div>
+            <h3>Keep every result</h3>
+            <p>
+              Return to previous projects, decisions, conversations, and outputs whenever you need them.
+            </p>
+            <div class="feature-meta">A useful record of completed work</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="outcomes" class="outcomes-section">
+      <div class="container">
+        <div class="section-head center">
+          <div class="section-kicker">What could Harvey do?</div>
+          <h2>Bring the goal. Harvey builds the path.</h2>
+          <p>
+            Start with real business outcomes, not a list of technical features.
+          </p>
+        </div>
+
+        <div class="outcomes-grid">
+          <article class="outcome-card" style="--card-glow: rgba(37, 99, 235, 0.12);">
+            <span class="outcome-number">Marketing</span>
+            <h3>Launch a marketing campaign</h3>
+            <p>Research the audience, shape the message, create content, and prepare the campaign plan.</p>
+            <span class="outcome-link">See the team Harvey would build →</span>
+          </article>
+
+          <article class="outcome-card" style="--card-glow: rgba(124, 58, 237, 0.12);">
+            <span class="outcome-number">Customer insight</span>
+            <h3>Analyse customer feedback</h3>
+            <p>Find recurring themes, surface friction points, and turn feedback into practical next steps.</p>
+            <span class="outcome-link">See the team Harvey would build →</span>
+          </article>
+
+          <article class="outcome-card" style="--card-glow: rgba(249, 115, 96, 0.13);">
+            <span class="outcome-number">Sales</span>
+            <h3>Prepare a business proposal</h3>
+            <p>Research the opportunity, structure the offer, and produce a polished proposal.</p>
+            <span class="outcome-link">See the team Harvey would build →</span>
+          </article>
+
+          <article class="outcome-card" style="--card-glow: rgba(22, 143, 99, 0.12);">
+            <span class="outcome-number">Product</span>
+            <h3>Plan a product launch</h3>
+            <p>Coordinate research, positioning, content, timelines, risks, and launch activities.</p>
+            <span class="outcome-link">See the team Harvey would build →</span>
+          </article>
+
+          <article class="outcome-card" style="--card-glow: rgba(217, 119, 6, 0.14);">
+            <span class="outcome-number">Decision support</span>
+            <h3>Review business performance</h3>
+            <p>Bring together relevant information and turn it into a concise decision brief.</p>
+            <span class="outcome-link">See the team Harvey would build →</span>
+          </article>
+
+          <article class="outcome-card" style="--card-glow: rgba(98, 104, 212, 0.13);">
+            <span class="outcome-number">Content</span>
+            <h3>Create a content calendar</h3>
+            <p>Develop themes, draft ideas, assign channels, and prepare a publishing schedule.</p>
+            <span class="outcome-link">See the team Harvey would build →</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="connectors">
+      <div class="container connectors-wrap">
+        <div>
+          <div class="section-kicker">Work where your business works</div>
+          <div class="section-head" style="margin-bottom: 0;">
+            <h2>Your team can use the tools you already rely on.</h2>
+            <p>
+              Connect Harvey to the platforms your business uses every day,
+              so the team can gather information, coordinate work, and move tasks forward.
+            </p>
+          </div>
+
+          <div class="connector-list">
+            <div class="connector-point">
+              <span class="check">✓</span>
+              <div>
+                <strong>Bring information into the workspace</strong>
+                <span>Give the team the context it needs without endless manual copying.</span>
+              </div>
+            </div>
+
+            <div class="connector-point">
+              <span class="check">✓</span>
+              <div>
+                <strong>Coordinate tasks across your tools</strong>
+                <span>Keep projects moving without jumping between a dozen tabs.</span>
+              </div>
+            </div>
+
+            <div class="connector-point">
+              <span class="check">✓</span>
+              <div>
+                <strong>Approve important actions first</strong>
+                <span>Harvey asks before making consequential changes.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="connector-cloud" aria-label="Example business tool connections">
+          <div class="connector">Notion<span>Knowledge & docs</span></div>
+          <div class="connector">ClickUp<span>Projects & tasks</span></div>
+          <div class="connector">Google Drive<span>Files & content</span></div>
+          <div class="connector">Shopify<span>Commerce data</span></div>
+          <div class="connector">Salesforce<span>Customer records</span></div>
+          <div class="connector">More soon<span>Built to expand</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="control" class="trust-section">
+      <div class="container">
+        <div class="trust-panel">
+          <div class="trust-panel-grid">
+            <div>
+              <div class="section-kicker" style="color: #8fb3ff;">Human control</div>
+              <h2>AI does the work. You stay in control.</h2>
+              <p>
+                Harvey shows you what the team plans to do, what tools it needs,
+                and where your approval is required. You can review progress,
+                redirect the work, and stop execution at any time.
+              </p>
+            </div>
+
+            <div class="trust-cards">
+              <div class="trust-card">
+                <span class="trust-card-icon">✓</span>
+                <div>
+                  <strong>Review before important actions</strong>
+                  <span>See the plan before anything consequential happens.</span>
+                </div>
+              </div>
+
+              <div class="trust-card">
+                <span class="trust-card-icon">◎</span>
+                <div>
+                  <strong>Clear progress and activity history</strong>
+                  <span>Understand what happened, when, and why.</span>
+                </div>
+              </div>
+
+              <div class="trust-card">
+                <span class="trust-card-icon">✦</span>
+                <div>
+                  <strong>Human judgment where it matters</strong>
+                  <span>Harvey brings you into the loop at the right moments.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="final-cta">
+      <div class="container">
+        <div class="cta-box">
+          <div class="section-kicker">Ready when you are</div>
+          <h2>What would you like to accomplish today?</h2>
+          <p>
+            Give Harvey a goal and start building the team to make it happen.
+          </p>
+
+          <div class="hero-actions">
+            <a href="#" class="btn btn-primary">
+              Build My Team
+              <span aria-hidden="true">→</span>
+            </a>
+            <a href="#" class="btn btn-secondary">Sign in to Workspace</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-row">
+      <div>© 2026 Hey Harvey Workspace</div>
+      <div class="footer-links">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
