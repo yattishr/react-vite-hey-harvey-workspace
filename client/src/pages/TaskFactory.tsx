@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
-import { ArrowRight, CheckCircle2, Loader2, Play, RefreshCw, Sparkles, WandSparkles } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, Info, Loader2, Play, Sparkles, WandSparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -12,25 +12,25 @@ import { useLocation } from "wouter";
 const taskTemplates = [
   {
     id: "market-opportunity",
-    title: "Research a market opportunity",
+    title: "Explore a new market opportunity",
     description:
       "Assess a new market opportunity, identify customer segments, competitors, risks, and a practical entry plan.",
   },
   {
     id: "operations-improvement",
-    title: "Create an operations improvement plan",
+    title: "Improve a business process",
     description:
       "Review a business process, find bottlenecks, propose improvements, and define a short implementation roadmap.",
   },
   {
     id: "business-brief-analysis",
-    title: "Analyze a business document or brief",
+    title: "Review a document or brief",
     description:
       "Analyze a supplied business brief, extract key issues, identify gaps, and produce recommended next actions.",
   },
   {
     id: "go-to-market",
-    title: "Draft a go-to-market plan",
+    title: "Create a go-to-market plan",
     description:
       "Create a go-to-market plan with positioning, audience, channels, launch sequence, and success metrics.",
   },
@@ -46,7 +46,6 @@ export default function TaskFactory() {
   const planMutation = trpc.agentFactory.plan.useMutation();
   const approveAndRunMutation = trpc.agentFactory.approveAndRun.useMutation();
 
-  const selectedTemplate = taskTemplates.find(template => template.id === selectedTemplateId);
   const canPlan = description.trim().length >= 10;
 
   const handleTemplateSelect = (template: (typeof taskTemplates)[number]) => {
@@ -67,9 +66,9 @@ export default function TaskFactory() {
         templateId: selectedTemplateId ?? undefined,
       });
       setPreview(plan);
-      toast.success("Team generated");
+      toast.success("Team suggestion ready");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Failed to generate team";
+      const message = error instanceof Error ? error.message : "Harvey couldn't suggest a team";
       toast.error(message);
     }
   };
@@ -87,7 +86,7 @@ export default function TaskFactory() {
         utils.tasks.list.invalidate(),
         utils.workflows.list.invalidate(),
       ]);
-      toast.success("Team created and task completed");
+      toast.success("Your team has completed the work");
       setLocation(`/tasks/${result.task.id}`);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to approve and run task";
@@ -102,10 +101,10 @@ export default function TaskFactory() {
           <div className="harvey-section-label mb-3">From goal to done</div>
           <div className="flex items-center gap-2">
             <WandSparkles className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-bold tracking-tight">Build My Team</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Build a team around your goal</h1>
           </div>
           <p className="mt-2 max-w-2xl text-muted-foreground">
-            Describe the outcome. Harvey builds the agents, workflow, and first task run.
+            Describe what you want to accomplish. Harvey will suggest the right team and a plan for getting the work done.
           </p>
         </div>
         {preview ? (
@@ -118,36 +117,38 @@ export default function TaskFactory() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <div className="space-y-4">
-          <Card className="p-5">
+          <Card className="p-5 sm:p-6">
             <div className="mb-4 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">1. Describe the outcome</h2>
+              <h2 className="text-lg font-semibold">1. What would you like to accomplish?</h2>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <p className="harvey-section-label mb-2">Start with an example</p>
+            <div className="grid gap-2 sm:grid-cols-2">
               {taskTemplates.map(template => {
                 const isSelected = selectedTemplateId === template.id;
                 return (
                   <button
                     key={template.id}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => handleTemplateSelect(template)}
-                    className={`rounded-lg border p-3 text-left transition-colors hover:border-primary/60 hover:bg-accent/40 ${
-                      isSelected ? "border-primary bg-accent/60" : "border-border"
+                    className={`flex min-h-11 items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all hover:border-[#b8cdf8] hover:bg-[#f7f9ff] ${
+                      isSelected
+                        ? "border-[#b8cdf8] bg-[#eef4ff] text-[#1749bf] shadow-[0_5px_14px_rgba(37,99,235,0.07)]"
+                        : "border-border bg-white/70"
                     }`}
                   >
-                    <span className="block text-sm font-medium">{template.title}</span>
-                    <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
-                      {template.description}
-                    </span>
+                    <span className="block text-sm font-semibold">{template.title}</span>
+                    {isSelected ? <Check className="h-4 w-4 shrink-0" /> : null}
                   </button>
                 );
               })}
             </div>
 
-            <div className="mt-4 space-y-2">
-              <label htmlFor="task-factory-description" className="text-sm font-medium">
-                Task description
+            <div className="mt-6 space-y-2">
+              <label htmlFor="task-factory-description" className="text-sm font-bold">
+                Describe the outcome
               </label>
               <Textarea
                 id="task-factory-description"
@@ -156,43 +157,35 @@ export default function TaskFactory() {
                   setDescription(event.target.value);
                   setPreview(null);
                 }}
-                placeholder="Describe the business outcome you want Harvey to produce..."
-                rows={8}
+                placeholder="Tell Harvey what you want to achieve, what the work should cover, and what a useful result would look like."
+                rows={9}
+                className="min-h-[220px] resize-y text-base leading-7"
               />
-              {selectedTemplate ? (
-                <p className="text-xs text-muted-foreground">
-                  Starter selected: {selectedTemplate.title}
-                </p>
-              ) : null}
+              <p className="text-sm leading-6 text-muted-foreground">
+                Harvey will use this to recommend the right roles, responsibilities, and next steps.
+              </p>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button onClick={handlePlan} disabled={!canPlan || planMutation.isPending} className="gap-2">
                 {planMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <WandSparkles className="h-4 w-4" />
                 )}
-                {preview ? "Regenerate Team" : "Generate Team"}
+                {preview ? "Update My Team Suggestion" : "Suggest My Team"}
               </Button>
-              {preview ? (
-                <Button
-                  variant="outline"
-                  onClick={handlePlan}
-                  disabled={!canPlan || planMutation.isPending}
-                  className="gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Regenerate
-                </Button>
-              ) : null}
+              <div className="flex max-w-md items-start gap-2 text-xs leading-5 text-muted-foreground">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2563eb]" />
+                <span><strong className="text-foreground">What happens next?</strong> You’ll review Harvey’s suggested team before any work begins.</span>
+              </div>
             </div>
           </Card>
 
           <Card className="p-5">
-            <h2 className="text-lg font-semibold">3. Approve and run</h2>
+            <h2 className="text-lg font-semibold">3. Approve when you’re ready</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Approval creates the agents, saves a sequential workflow, starts the task, and opens the task detail page.
+              Review the suggested roles and plan. When you’re happy with them, approve the team to begin the work.
             </p>
             <Button
               className="mt-4 gap-2"
@@ -204,29 +197,31 @@ export default function TaskFactory() {
               ) : (
                 <Play className="h-4 w-4" />
               )}
-              Approve & Run
+              Approve Team & Start Work
             </Button>
           </Card>
         </div>
 
         <Card className="min-h-[520px] p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-semibold">2. Review the generated team</h2>
-            {preview ? <Badge>{preview.agents.length} agents</Badge> : null}
+            <h2 className="text-lg font-semibold">
+              {preview ? "Here is the team Harvey recommends" : "2. Review Harvey’s suggested team"}
+            </h2>
+            {preview ? <Badge>{preview.agents.length} suggested roles</Badge> : null}
           </div>
 
           {!preview ? (
             <div className="flex min-h-[420px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
               <WandSparkles className="mb-4 h-10 w-10 text-muted-foreground" />
-              <p className="font-medium">No team generated yet</p>
+              <p className="font-medium">Your suggested team will appear here</p>
               <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                Choose a starter task or write your own description, then generate a team preview.
+                Describe your goal and Harvey will recommend the roles and plan best suited to the outcome.
               </p>
             </div>
           ) : (
             <div className="space-y-5">
               <div className="rounded-lg border bg-muted/30 p-4">
-                <p className="text-sm text-muted-foreground">Task</p>
+                <p className="text-sm text-muted-foreground">Your goal</p>
                 <h3 className="mt-1 text-xl font-semibold">{preview.taskTitle}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{preview.taskSummary}</p>
               </div>
@@ -239,7 +234,7 @@ export default function TaskFactory() {
                         <h3 className="font-semibold">{agent.name}</h3>
                         <p className="text-sm text-muted-foreground">{agent.role}</p>
                       </div>
-                      <Badge variant="outline">Agent {index + 1}</Badge>
+                      <Badge variant="outline">Role {index + 1}</Badge>
                     </div>
                     <p className="mt-3 text-sm leading-6">{agent.goal}</p>
                     <p className="mt-3 text-xs leading-5 text-muted-foreground">{agent.backstory}</p>
@@ -251,7 +246,7 @@ export default function TaskFactory() {
               </div>
 
               <div className="rounded-lg border p-4">
-                <h3 className="font-semibold">Workflow</h3>
+                <h3 className="font-semibold">Suggested plan</h3>
                 <div className="mt-4 space-y-3">
                   {preview.workflowSteps.map((step, index) => {
                     const agent = preview.agents[step.agentIndex - 1];
@@ -267,7 +262,7 @@ export default function TaskFactory() {
                         </div>
                         <div className="pb-3">
                           <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">{agent?.name ?? `Agent ${step.agentIndex}`}</p>
+                            <p className="font-medium">{agent?.name ?? `Team member ${step.agentIndex}`}</p>
                             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                             <p className="text-sm text-muted-foreground">Step {step.stepNumber}</p>
                           </div>
