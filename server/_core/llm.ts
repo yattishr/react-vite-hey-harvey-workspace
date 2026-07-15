@@ -1,5 +1,4 @@
 import { ENV } from "./env";
-import https from "node:https";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
@@ -20,7 +19,12 @@ export type FileContent = {
   type: "file_url";
   file_url: {
     url: string;
-    mime_type?: "audio/mpeg" | "audio/wav" | "application/pdf" | "audio/mp4" | "video/mp4" ;
+    mime_type?:
+      | "audio/mpeg"
+      | "audio/wav"
+      | "application/pdf"
+      | "audio/mp4"
+      | "video/mp4";
   };
 };
 
@@ -318,82 +322,6 @@ const computeBackoffDelay = (
 
 // Retries non-2xx responses and network errors with exponential backoff, then
 // returns the final Response so callers keep their existing error handling.
-const isCertificateChainError = (error: unknown) => {
-  const cause = (error as { cause?: { code?: string } }).cause;
-  return cause?.code === "UNABLE_TO_VERIFY_LEAF_SIGNATURE";
-};
-
-const fetchWithInsecureTls = (
-  url: string,
-  init: FetchInit
-): Promise<LlmHttpResponse> => {
-  return new Promise((resolve, reject) => {
-    const requestUrl = new URL(url);
-    const request = https.request(
-      requestUrl,
-      {
-        method: init.method ?? "GET",
-        rejectUnauthorized: false,
-        headers: init.headers as Record<string, string>,
-      },
-      response => {
-        const chunks: Buffer[] = [];
-
-        response.on("data", chunk => {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-        });
-        response.on("end", () => {
-          const body = Buffer.concat(chunks).toString("utf8");
-          const status = response.statusCode ?? 0;
-
-          resolve({
-            ok: status >= 200 && status < 300,
-            status,
-            statusText: response.statusMessage ?? "",
-            headers: {
-              get(name: string) {
-                const value = response.headers[name.toLowerCase()];
-                if (Array.isArray(value)) return value[0] ?? null;
-                return value ?? null;
-              },
-            },
-            body: {
-              async cancel() {},
-            },
-            async text() {
-              return body;
-            },
-            async json() {
-              return JSON.parse(body);
-            },
-          });
-        });
-      }
-    );
-
-    request.on("error", reject);
-    if (init.body) {
-      request.write(init.body);
-    }
-    request.end();
-  });
-};
-
-const fetchLlm = async (url: string, init: FetchInit): Promise<LlmHttpResponse> => {
-  try {
-    return await fetch(url, init);
-  } catch (error) {
-    if (!ENV.isProduction && isCertificateChainError(error)) {
-      console.warn(
-        "[LLM] TLS verification failed; retrying with local development TLS fallback"
-      );
-      return fetchWithInsecureTls(url, init);
-    }
-
-    throw error;
-  }
-};
-
 const fetchWithBackoff = async (
   url: string,
   init: FetchInit
@@ -402,14 +330,12 @@ const fetchWithBackoff = async (
 
   for (let attempt = 0; attempt <= RETRY_MAX_RETRIES; attempt++) {
     try {
-      const response = await fetchLlm(url, init);
+      const response = await fetch(url, init);
       if (response.ok || attempt === RETRY_MAX_RETRIES) {
         return response;
       }
 
-      const retryAfterMs = parseRetryAfter(
-        response.headers.get("retry-after")
-      );
+      const retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
       try {
         await response.body?.cancel();
       } catch {

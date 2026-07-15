@@ -4,8 +4,8 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development tsx watch server/_core/index.ts",
-    "start": "cross-env NODE_ENV=production node dist/index.js",
+    "dev": "cross-env NODE_USE_SYSTEM_CA=1 NODE_ENV=development tsx watch server/_core/index.ts",
+    "start": "cross-env NODE_USE_SYSTEM_CA=1 NODE_ENV=production node dist/index.js",
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "check": "tsc --noEmit",
     "lint": "tsc --noEmit",
@@ -14,7 +14,7 @@
     "test:unit": "vitest run server/agents-runtime/runtime.test.ts",
     "test:integration": "vitest run server/agents-runtime/step-executor.integration.test.ts server/agents-runtime/runtime-router.integration.test.ts",
     "test:e2e": "vitest run server/agents-runtime/runtime.e2e.test.ts",
-    "test:smoke": "cross-env RUN_DATABASE_SMOKE_TESTS=true vitest run server/smoke-tests.test.ts",
+    "test:smoke": "cross-env NODE_USE_SYSTEM_CA=1 RUN_DATABASE_SMOKE_TESTS=true vitest run server/smoke-tests.test.ts",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
@@ -113,7 +113,7 @@
   },
   "packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.19.0"
   },
   "pnpm": {
     "patchedDependencies": {

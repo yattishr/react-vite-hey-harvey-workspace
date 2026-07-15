@@ -8,10 +8,12 @@ This repository is React 19 + Vite on the client and Express + tRPC + Drizzle/Po
 
 ## Setup
 
-1. Use Node.js 22 or newer and install with `corepack pnpm install`.
+1. Use Node.js 22.19 or newer and install with `corepack pnpm install`.
 2. Apply `drizzle/postgres/0004_openai_agents_runtime.sql` with the normal migration command.
 3. Configure the variables documented in `.env.example`.
 4. Start with `OPENAI_AGENTS_RUNTIME_ENABLED=false`, verify legacy runs, then enable the flag for the intended deployment.
+
+The repository's `dev`, `start`, and database smoke-test scripts set `NODE_USE_SYSTEM_CA=1` before Node starts. This keeps TLS verification enabled while allowing Node to trust certificate authorities installed in the operating-system trust store, which is required on some managed Windows networks. Deployments that start `dist/index.js` directly must set the same process environment variable before Node launches, or configure a PEM bundle with `NODE_EXTRA_CA_CERTS`. Do not use `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 
 The deterministic test suite runs with `pnpm test`. The legacy database-mutating smoke suite is opt-in via `pnpm test:smoke` and must target a disposable fixture database.
 

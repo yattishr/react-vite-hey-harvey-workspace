@@ -5,7 +5,6 @@ export const workspaceStepOutputSchema = z
   .object({
     summary: z.string().min(1).max(1_000),
     content: z.string().min(1).max(100_000),
-    data: z.record(z.string(), z.unknown()).optional(),
   })
   .strict();
 

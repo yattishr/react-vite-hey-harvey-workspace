@@ -5,7 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
-import { Plus, Zap, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import {
+  Plus,
+  Zap,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Users,
+  ListTodo,
+  Settings2,
+} from "lucide-react";
 
 export default function Dashboard() {
   const { user, organization } = useAuth();
@@ -108,8 +117,8 @@ export default function Dashboard() {
                 {tasks.length} total tasks
               </p>
             </div>
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className="p-3 bg-green-100 dark:bg-emerald-950/60 rounded-lg">
+              <CheckCircle className="w-6 h-6 text-slate-800 dark:text-emerald-100" />
             </div>
           </div>
         </Card>
@@ -203,18 +212,33 @@ export default function Dashboard() {
           <h3 className="font-semibold mb-4">Quick Actions</h3>
           <div className="space-y-2">
             <Link href="/agents">
-              <Button variant="outline" className="w-full justify-start">
+              <Button
+                variant="outline"
+                className="w-full justify-between border-border bg-background font-semibold text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
+              >
                 Manage Agents
+                <Users className="h-5 w-5 text-primary" aria-hidden="true" />
               </Button>
             </Link>
             <Link href="/tasks">
-              <Button variant="outline" className="w-full justify-start">
+              <Button
+                variant="outline"
+                className="w-full justify-between border-border bg-background font-semibold text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
+              >
                 Manage Tasks
+                <ListTodo className="h-5 w-5 text-primary" aria-hidden="true" />
               </Button>
             </Link>
             <Link href="/agents">
-              <Button variant="outline" className="w-full justify-start">
+              <Button
+                variant="outline"
+                className="w-full justify-between border-border bg-background font-semibold text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
+              >
                 Configure Agents
+                <Settings2
+                  className="h-5 w-5 text-primary"
+                  aria-hidden="true"
+                />
               </Button>
             </Link>
           </div>

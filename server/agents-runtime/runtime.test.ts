@@ -7,6 +7,7 @@ import {
   validateAgentsRuntimeEnvironment,
 } from "./config";
 import { FakeAgentsRunner } from "./fake-runner";
+import { asRuntimeError } from "./errors";
 import { composeStepInput } from "./input-composer";
 import { workspaceStepOutputSchema } from "./output-contracts";
 
@@ -29,6 +30,31 @@ describe("agents runtime configuration", () => {
     delete process.env.OPENAI_API_KEY;
     resetAgentsRuntimeConfigForTests();
     expect(() => validateAgentsRuntimeEnvironment()).toThrow(/OPENAI_API_KEY/);
+  });
+
+  it("classifies nested TLS trust failures as non-retryable configuration errors", () => {
+    const failure = new TypeError("fetch failed", {
+      cause: Object.assign(new Error("certificate rejected"), {
+        code: "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+      }),
+    });
+
+    const normalized = asRuntimeError(failure);
+
+    expect(normalized.code).toBe("TLS_CERTIFICATE_UNTRUSTED");
+    expect(normalized.retryable).toBe(false);
+    expect(normalized.message).toMatch(/system CA trust/i);
+  });
+
+  it("classifies SDK agent configuration failures as non-retryable", () => {
+    class UserError extends Error {}
+    const failure = new UserError("Invalid structured output schema");
+
+    const normalized = asRuntimeError(failure);
+
+    expect(normalized.code).toBe("RUNTIME_COMPILATION_FAILED");
+    expect(normalized.retryable).toBe(false);
+    expect(normalized.message).toMatch(/Invalid structured output schema/);
   });
 });
 
