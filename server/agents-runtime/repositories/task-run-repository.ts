@@ -1,6 +1,34 @@
 import { and, desc, eq } from "drizzle-orm";
-import { taskRuns, type InsertTaskRun } from "../../../drizzle/schema";
+import {
+  tasks,
+  taskRuns,
+  type InsertTask,
+  type InsertTaskRun,
+} from "../../../drizzle/schema";
 import { getDb } from "../../db";
+
+export async function createTaskAndRun(
+  taskInput: InsertTask,
+  runInput: Omit<InsertTaskRun, "taskId">
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db.transaction(async tx => {
+    const createdTasks = await tx.insert(tasks).values(taskInput).returning();
+    const task = createdTasks[0];
+    if (!task) throw new Error("Failed to create task");
+
+    const createdRuns = await tx
+      .insert(taskRuns)
+      .values({ ...runInput, taskId: task.id })
+      .returning();
+    const taskRun = createdRuns[0];
+    if (!taskRun) throw new Error("Failed to create task run");
+
+    return { task, taskRun };
+  });
+}
 
 export async function createTaskRun(input: InsertTaskRun) {
   const db = await getDb();

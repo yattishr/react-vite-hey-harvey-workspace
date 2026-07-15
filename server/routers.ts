@@ -22,6 +22,7 @@ import {
   getExecutionBlueprint,
 } from "./planning/executionBlueprintService";
 import { assembleTaskTeam } from "./teams/teamAssemblyService";
+import { getTeamMemberCountsByTaskIds } from "./teams/taskTeamRepository";
 import { isAgentTeamReuseEnabled } from "./orchestration/agentOrchestrator";
 
 export const appRouter = router({
@@ -203,7 +204,17 @@ export const appRouter = router({
       }),
 
     list: organizationProcedure.query(async ({ ctx }) => {
-      return await db.getTasksByUserId(ctx.user.id);
+      const taskList = await db.getTasksByUserId(ctx.user.id);
+      const reusableCounts = await getTeamMemberCountsByTaskIds(
+        ctx.organization.id,
+        taskList.map(task => task.id)
+      );
+
+      return taskList.map(task => ({
+        ...task,
+        assignedAgentCount:
+          reusableCounts.get(task.id) ?? (task.agentIds as number[]).length,
+      }));
     }),
 
     get: organizationProcedure

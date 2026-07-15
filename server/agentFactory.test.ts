@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   createTask: vi.fn(),
   createWorkflow: vi.fn(),
   createWorkflowStep: vi.fn(),
+  createTaskAndRun: vi.fn(),
   executeStoredTask: vi.fn(),
 }));
 
@@ -25,6 +26,10 @@ vi.mock("./taskExecution", () => ({
   executeStoredTask: mocks.executeStoredTask,
 }));
 
+vi.mock("./agents-runtime/repositories/task-run-repository", () => ({
+  createTaskAndRun: mocks.createTaskAndRun,
+}));
+
 const validPreview = {
   taskTitle: "Market Entry Plan",
   taskSummary: "Assess the opportunity and produce a practical entry plan.",
@@ -33,14 +38,16 @@ const validPreview = {
       name: "Market Analyst",
       role: "Research Lead",
       goal: "Assess customer segments and market dynamics.",
-      backstory: "A concise commercial researcher with strong synthesis skills.",
+      backstory:
+        "A concise commercial researcher with strong synthesis skills.",
       responsibility: "Research market size, segments, and customer needs.",
     },
     {
       name: "Competitive Strategist",
       role: "Strategy Lead",
       goal: "Identify competitors, risks, and positioning options.",
-      backstory: "A pragmatic strategist focused on actionable differentiation.",
+      backstory:
+        "A pragmatic strategist focused on actionable differentiation.",
       responsibility: "Map competitors and recommend positioning.",
     },
   ],
@@ -48,12 +55,14 @@ const validPreview = {
     {
       stepNumber: 1,
       agentIndex: 1,
-      taskDescription: "Research market size, customer segments, and demand signals.",
+      taskDescription:
+        "Research market size, customer segments, and demand signals.",
     },
     {
       stepNumber: 2,
       agentIndex: 2,
-      taskDescription: "Use the research to create positioning and entry recommendations.",
+      taskDescription:
+        "Use the research to create positioning and entry recommendations.",
     },
   ],
 };
@@ -102,6 +111,7 @@ describe("agentFactoryRouter", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.AGENT_TEAM_REUSE_ENABLED = "false";
     nextAgentId = 100;
     mocks.invokeLLM.mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(validPreview) } }],
@@ -139,13 +149,50 @@ describe("agentFactoryRouter", () => {
       result: "Final synthesized output",
       taskId: 200,
     });
+    mocks.createTaskAndRun.mockImplementation(async taskInput => ({
+      task: {
+        id: 200,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        result: null,
+        error: null,
+        executionStartedAt: null,
+        executionCompletedAt: null,
+        taskTeamId: null,
+        executionBlueprintId: null,
+        ...taskInput,
+      },
+      taskRun: {
+        id: 500,
+        organizationId: 11,
+        userId: 7,
+        taskId: 200,
+        taskTeamId: null,
+        runtime: "legacy",
+        status: "queued",
+        correlationId: "test-correlation",
+        eventSequence: 0,
+        openaiTraceId: null,
+        currentTeamMemberId: null,
+        finalArtifactId: null,
+        errorCode: null,
+        errorMessage: null,
+        startedAt: null,
+        completedAt: null,
+        cancelledAt: null,
+        failedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    }));
   });
 
   it("returns a validated planner preview from the LLM response", async () => {
     const caller = agentFactoryRouter.createCaller(createMockContext());
 
     const result = await caller.plan({
-      description: "Research a new market opportunity for a legal operations product.",
+      description:
+        "Research a new market opportunity for a legal operations product.",
       templateId: "market-opportunity",
     });
 
@@ -162,12 +209,13 @@ describe("agentFactoryRouter", () => {
   it("rejects invalid planner JSON", async () => {
     const caller = agentFactoryRouter.createCaller(createMockContext());
     mocks.invokeLLM.mockResolvedValueOnce({
-      choices: [{ message: { content: "{\"taskTitle\":\"Incomplete\"}" } }],
+      choices: [{ message: { content: '{"taskTitle":"Incomplete"}' } }],
     });
 
     await expect(
       caller.plan({
-        description: "Research a new market opportunity for a legal operations product.",
+        description:
+          "Research a new market opportunity for a legal operations product.",
       })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
@@ -176,7 +224,8 @@ describe("agentFactoryRouter", () => {
     const caller = agentFactoryRouter.createCaller(createMockContext());
 
     const result = await caller.approveAndRun({
-      description: "Research a new market opportunity for a legal operations product.",
+      description:
+        "Research a new market opportunity for a legal operations product.",
       preview: validPreview,
     });
 
@@ -222,12 +271,44 @@ describe("agentFactoryRouter", () => {
     expect(result.execution.result).toBe("Final synthesized output");
   });
 
+  it("atomically creates the reusable task and initial run before execution", async () => {
+    process.env.AGENT_TEAM_REUSE_ENABLED = "true";
+    const caller = agentFactoryRouter.createCaller(createMockContext());
+
+    await caller.approveAndRun({
+      description:
+        "Research a new market opportunity for a legal operations product.",
+      preview: validPreview,
+    });
+
+    expect(mocks.createTaskAndRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 11,
+        userId: 7,
+        agentIds: [],
+        status: "queued",
+      }),
+      expect.objectContaining({
+        organizationId: 11,
+        userId: 7,
+        runtime: "legacy",
+        status: "queued",
+      })
+    );
+    expect(mocks.executeStoredTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 200 }),
+      expect.objectContaining({ id: 500, taskId: 200 })
+    );
+    expect(mocks.createTask).not.toHaveBeenCalled();
+  });
+
   it("rejects empty approval previews", async () => {
     const caller = agentFactoryRouter.createCaller(createMockContext());
 
     await expect(
       caller.approveAndRun({
-        description: "Research a new market opportunity for a legal operations product.",
+        description:
+          "Research a new market opportunity for a legal operations product.",
         preview: {
           taskTitle: "",
           taskSummary: "",
@@ -245,7 +326,8 @@ describe("agentFactoryRouter", () => {
 
     await expect(
       caller.approveAndRun({
-        description: "Research a new market opportunity for a legal operations product.",
+        description:
+          "Research a new market opportunity for a legal operations product.",
         preview: validPreview,
       })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });

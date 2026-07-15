@@ -62,6 +62,10 @@ export default function TaskDetail() {
   const utils = trpc.useUtils();
 
   const agents = agentsQuery.data || [];
+  const assignedAgentCount =
+    runHistory?.members.length ??
+    (task?.agentIds as number[] | undefined)?.length ??
+    0;
 
   useEffect(() => {
     if (!task || isEditOpen) return;
@@ -90,6 +94,7 @@ export default function TaskDetail() {
       await Promise.all([
         utils.tasks.get.invalidate({ id: taskId }),
         utils.tasks.getExecutionLogs.invalidate({ taskId }),
+        utils.tasks.getTaskRunHistory.invalidate({ taskId }),
         utils.tasks.list.invalidate(),
       ]);
     } catch (error: unknown) {
@@ -215,6 +220,10 @@ export default function TaskDetail() {
         return (
           <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
         );
+      case "team_ready":
+        return (
+          <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+        );
       default:
         return null;
     }
@@ -223,13 +232,15 @@ export default function TaskDetail() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+        return "border-emerald-200 bg-emerald-50 text-slate-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100";
       case "running":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       case "failed":
         return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
       case "queued":
         return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "team_ready":
+        return "border-emerald-200 bg-emerald-50 text-slate-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400";
     }
@@ -273,8 +284,10 @@ export default function TaskDetail() {
             {getStatusIcon(task.status)}
             <h1 className="text-3xl font-bold tracking-tight">{task.title}</h1>
           </div>
-          <Badge className={getStatusColor(task.status)}>
-            {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+          <Badge variant="outline" className={getStatusColor(task.status)}>
+            {task.status
+              .replace(/_/g, " ")
+              .replace(/^./, value => value.toUpperCase())}
           </Badge>
         </div>
         {task.status !== "running" && (
@@ -400,9 +413,7 @@ export default function TaskDetail() {
               <p className="text-xs font-medium text-muted-foreground mb-1">
                 Agents Assigned
               </p>
-              <p className="text-lg font-semibold">
-                {(task.agentIds as number[]).length}
-              </p>
+              <p className="text-lg font-semibold">{assignedAgentCount}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-1">
@@ -436,31 +447,42 @@ export default function TaskDetail() {
         </div>
       </Card>
 
-      {runHistory?.taskRun ? (
+      {runHistory?.team ? (
         <Card className="p-6 card-elevated">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">Run timeline</h2>
+              <h2 className="text-lg font-semibold">
+                {runHistory.taskRun ? "Run timeline" : "Assigned team"}
+              </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Durable step state recovers automatically after refresh.
+                {runHistory.taskRun
+                  ? "Durable step state recovers automatically after refresh."
+                  : "This team is ready to start work."}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline">
-                {runHistory.taskRun.runtime === "openai_agents_sdk"
-                  ? "OpenAI Agents SDK"
-                  : "Legacy"}
+            {runHistory.taskRun ? (
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline">
+                  {runHistory.taskRun.runtime === "openai_agents_sdk"
+                    ? "OpenAI Agents SDK"
+                    : "Legacy"}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={getStatusColor(
+                    runHistory.taskRun.status === "succeeded"
+                      ? "completed"
+                      : runHistory.taskRun.status
+                  )}
+                >
+                  {runHistory.taskRun.status.replace(/_/g, " ")}
+                </Badge>
+              </div>
+            ) : (
+              <Badge variant="outline" className={getStatusColor("team_ready")}>
+                Ready
               </Badge>
-              <Badge
-                className={getStatusColor(
-                  runHistory.taskRun.status === "succeeded"
-                    ? "completed"
-                    : runHistory.taskRun.status
-                )}
-              >
-                {runHistory.taskRun.status.replace(/_/g, " ")}
-              </Badge>
-            </div>
+            )}
           </div>
 
           <div className="mt-5 space-y-3">
@@ -504,16 +526,18 @@ export default function TaskDetail() {
             })}
           </div>
 
-          {runHistory.taskRun.status === "running" ? (
+          {runHistory.taskRun?.status === "running" ? (
             <div className="mt-4 flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300">
               <Zap className="h-4 w-4 animate-pulse" />
               {runHistory.events.at(-1)?.type.replace(/_/g, " ") ??
                 "Preparing next step"}
             </div>
           ) : null}
-          <p className="mt-4 text-xs text-muted-foreground">
-            Correlation ID: {runHistory.taskRun.correlationId}
-          </p>
+          {runHistory.taskRun ? (
+            <p className="mt-4 text-xs text-muted-foreground">
+              Correlation ID: {runHistory.taskRun.correlationId}
+            </p>
+          ) : null}
         </Card>
       ) : null}
 
@@ -686,6 +710,16 @@ export default function TaskDetail() {
           >
             <Play className="w-4 h-4" />
             Execute Task
+          </Button>
+        )}
+        {task.status === "team_ready" && (
+          <Button
+            className="gap-2"
+            onClick={handleExecuteTask}
+            disabled={executeMutation.isPending}
+          >
+            <Play className="w-4 h-4" />
+            {executeMutation.isPending ? "Starting..." : "Start Work"}
           </Button>
         )}
         {task.status === "failed" && (

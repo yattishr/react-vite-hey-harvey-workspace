@@ -173,7 +173,7 @@ export default function TaskFactory() {
                 ) : (
                   <WandSparkles className="h-4 w-4" />
                 )}
-                {preview ? "Update My Team Suggestion" : "Suggest My Team"}
+                {preview ? "Update My Team" : "Create My Team"}
               </Button>
               <div className="flex max-w-md items-start gap-2 text-xs leading-5 text-muted-foreground">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2563eb]" />

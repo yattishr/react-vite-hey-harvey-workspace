@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { randomUUID } from "node:crypto";
-import type { Task } from "../drizzle/schema";
+import type { Task, TaskRun } from "../drizzle/schema";
 import { getAgentsRuntimeConfig } from "./agents-runtime/config";
 import { publishRuntimeEvent } from "./agents-runtime/repositories/event-repository";
 import {
@@ -31,7 +31,7 @@ function parseAgentTools(tools: unknown): string[] {
   }
 }
 
-export async function executeStoredTask(task: Task) {
+export async function executeStoredTask(task: Task, preparedTaskRun?: TaskRun) {
   if (task.status === "running") {
     throw new TRPCError({
       code: "CONFLICT",
@@ -39,22 +39,56 @@ export async function executeStoredTask(task: Task) {
     });
   }
 
-  const runtime = getAgentsRuntimeConfig().OPENAI_AGENTS_RUNTIME_ENABLED
-    ? "openai_agents_sdk"
-    : "legacy";
-  const taskTeamId =
-    runtime === "openai_agents_sdk" || isAgentTeamReuseEnabled()
-      ? await ensureTaskTeam(task)
-      : null;
-  const taskRun = await createTaskRun({
-    organizationId: task.organizationId,
-    userId: task.userId,
-    taskId: task.id,
-    taskTeamId,
-    runtime,
-    status: "queued",
-    correlationId: randomUUID(),
-  });
+  const runtime =
+    preparedTaskRun?.runtime ??
+    (getAgentsRuntimeConfig().OPENAI_AGENTS_RUNTIME_ENABLED
+      ? "openai_agents_sdk"
+      : "legacy");
+  let taskRun = preparedTaskRun;
+  let taskTeamId: number | null = null;
+  try {
+    taskTeamId =
+      runtime === "openai_agents_sdk" || isAgentTeamReuseEnabled()
+        ? await ensureTaskTeam(task)
+        : null;
+
+    if (!taskRun) {
+      taskRun = await createTaskRun({
+        organizationId: task.organizationId,
+        userId: task.userId,
+        taskId: task.id,
+        taskTeamId,
+        runtime,
+        status: "queued",
+        correlationId: randomUUID(),
+      });
+    } else if (taskRun.taskTeamId !== taskTeamId) {
+      const updated = await updateTaskRun(task.organizationId, taskRun.id, {
+        taskTeamId,
+      });
+      if (!updated)
+        throw new Error("Failed to attach the task team to the run");
+      taskRun = updated;
+    }
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to prepare the task run";
+    if (taskRun) {
+      await updateTaskRun(task.organizationId, taskRun.id, {
+        status: "failed",
+        errorCode: "RUN_PREPARATION_FAILED",
+        errorMessage: message,
+        failedAt: new Date(),
+        completedAt: new Date(),
+      });
+      await db.updateTask(task.id, {
+        status: "failed",
+        error: message,
+        executionCompletedAt: new Date(),
+      });
+    }
+    throw error;
+  }
 
   if (runtime === "openai_agents_sdk") {
     try {

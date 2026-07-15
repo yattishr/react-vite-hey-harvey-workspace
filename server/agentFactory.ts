@@ -1,7 +1,10 @@
 import { TRPCError } from "@trpc/server";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import { organizationProcedure, router } from "./_core/trpc";
+import { getAgentsRuntimeConfig } from "./agents-runtime/config";
+import { createTaskAndRun } from "./agents-runtime/repositories/task-run-repository";
 import * as db from "./db";
 import { executeStoredTask } from "./taskExecution";
 import { isAgentTeamReuseEnabled } from "./orchestration/agentOrchestrator";
@@ -141,54 +144,60 @@ function parsePlannerResponse(content: string) {
     console.error("[AgentFactory] Invalid planner response", error);
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Harvey could not build a valid team plan. Please try regenerating.",
+      message:
+        "Harvey could not build a valid team plan. Please try regenerating.",
     });
   }
 }
 
 export const agentFactoryRouter = router({
-  plan: organizationProcedure.input(planInputSchema).mutation(async ({ input }) => {
-    try {
-      const response = await invokeLLM({
-        responseFormat: {
-          type: "json_schema",
-          json_schema: {
-            name: "task_first_agent_factory_plan",
-            strict: true,
-            schema: plannerJsonSchema,
+  plan: organizationProcedure
+    .input(planInputSchema)
+    .mutation(async ({ input }) => {
+      try {
+        const response = await invokeLLM({
+          responseFormat: {
+            type: "json_schema",
+            json_schema: {
+              name: "task_first_agent_factory_plan",
+              strict: true,
+              schema: plannerJsonSchema,
+            },
           },
-        },
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are Harvey, an expert task-first agent factory planner. Generate a simple team and sequential workflow for the user's desired outcome. Keep V1 simple: no external integrations, no marketplace, no scheduled work, no human approval chains, no advanced memory, and no complex branching workflows.",
-          },
-          {
-            role: "user",
-            content: `Task description:\n${input.description}\n\nTemplate id: ${input.templateId ?? "custom"}\n\nReturn 2 to 5 concise business-friendly agents. Each agent needs name, role, goal, concise backstory, and one suggested responsibility. Return one ordered workflow step per agent. Use 1-based agentIndex values matching the agents array.`,
-          },
-        ],
-      });
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are Harvey, an expert task-first agent factory planner. Generate a simple team and sequential workflow for the user's desired outcome. Keep V1 simple: no external integrations, no marketplace, no scheduled work, no human approval chains, no advanced memory, and no complex branching workflows.",
+            },
+            {
+              role: "user",
+              content: `Task description:\n${input.description}\n\nTemplate id: ${input.templateId ?? "custom"}\n\nReturn 2 to 5 concise business-friendly agents. Each agent needs name, role, goal, concise backstory, and one suggested responsibility. Return one ordered workflow step per agent. Use 1-based agentIndex values matching the agents array.`,
+            },
+          ],
+        });
 
-      const content = extractTextContent(response.choices[0]?.message?.content);
-      if (!content) {
+        const content = extractTextContent(
+          response.choices[0]?.message?.content
+        );
+        if (!content) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Harvey did not return a team plan. Please try again.",
+          });
+        }
+
+        return parsePlannerResponse(content);
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        const message =
+          error instanceof Error ? error.message : "Planner unavailable";
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Harvey did not return a team plan. Please try again.",
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Unable to build team: ${message}`,
         });
       }
-
-      return parsePlannerResponse(content);
-    } catch (error) {
-      if (error instanceof TRPCError) throw error;
-      const message = error instanceof Error ? error.message : "Planner unavailable";
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: `Unable to build team: ${message}`,
-      });
-    }
-  }),
+    }),
 
   approveAndRun: organizationProcedure
     .input(approveAndRunInputSchema)
@@ -196,18 +205,31 @@ export const agentFactoryRouter = router({
       const preview = input.preview;
 
       if (isAgentTeamReuseEnabled()) {
-        const task = await db.createTask({
-          organizationId: ctx.organization.id,
-          userId: ctx.user.id,
-          title: preview.taskTitle,
-          description: `${input.description}\n\nGenerated task summary:\n${preview.taskSummary}`,
-          agentIds: [],
-          source: "custom",
-          workflowType: "sequential",
-          status: "queued",
-        });
+        const runtime = getAgentsRuntimeConfig().OPENAI_AGENTS_RUNTIME_ENABLED
+          ? "openai_agents_sdk"
+          : "legacy";
+        const { task, taskRun } = await createTaskAndRun(
+          {
+            organizationId: ctx.organization.id,
+            userId: ctx.user.id,
+            title: preview.taskTitle,
+            description: `${input.description}\n\nGenerated task summary:\n${preview.taskSummary}`,
+            agentIds: [],
+            source: "custom",
+            workflowType: "sequential",
+            status: "queued",
+          },
+          {
+            organizationId: ctx.organization.id,
+            userId: ctx.user.id,
+            taskTeamId: null,
+            runtime,
+            status: "queued",
+            correlationId: randomUUID(),
+          }
+        );
 
-        const execution = await executeStoredTask(task);
+        const execution = await executeStoredTask(task, taskRun);
 
         return {
           task,
@@ -269,7 +291,8 @@ export const agentFactoryRouter = router({
           stepNumber: step.stepNumber,
           agentIds: JSON.stringify(step.agentIds),
           taskDescription: step.taskDescription,
-          dependsOn: step.stepNumber > 1 ? JSON.stringify([step.stepNumber - 1]) : null,
+          dependsOn:
+            step.stepNumber > 1 ? JSON.stringify([step.stepNumber - 1]) : null,
         });
       }
 

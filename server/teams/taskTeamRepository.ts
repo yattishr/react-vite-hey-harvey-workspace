@@ -1,5 +1,10 @@
-import { and, eq, asc } from "drizzle-orm";
-import { taskTeams, teamMembers, type InsertTaskTeam, type InsertTeamMember } from "../../drizzle/schema";
+import { and, asc, count, eq, inArray } from "drizzle-orm";
+import {
+  taskTeams,
+  teamMembers,
+  type InsertTaskTeam,
+  type InsertTeamMember,
+} from "../../drizzle/schema";
 import { getDb } from "../db";
 
 export async function createTaskTeam(input: InsertTaskTeam) {
@@ -14,7 +19,13 @@ export async function createTaskTeam(input: InsertTaskTeam) {
 export async function updateTaskTeamStatus(
   organizationId: number,
   taskTeamId: number,
-  status: "assembling" | "ready" | "running" | "completed" | "failed" | "cancelled"
+  status:
+    | "assembling"
+    | "ready"
+    | "running"
+    | "completed"
+    | "failed"
+    | "cancelled"
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -23,9 +34,17 @@ export async function updateTaskTeamStatus(
     .update(taskTeams)
     .set({
       status,
-      completedAt: status === "completed" || status === "failed" || status === "cancelled" ? new Date() : null,
+      completedAt:
+        status === "completed" || status === "failed" || status === "cancelled"
+          ? new Date()
+          : null,
     })
-    .where(and(eq(taskTeams.organizationId, organizationId), eq(taskTeams.id, taskTeamId)));
+    .where(
+      and(
+        eq(taskTeams.organizationId, organizationId),
+        eq(taskTeams.id, taskTeamId)
+      )
+    );
 }
 
 export async function getTaskTeam(organizationId: number, taskTeamId: number) {
@@ -35,20 +54,33 @@ export async function getTaskTeam(organizationId: number, taskTeamId: number) {
   const result = await db
     .select()
     .from(taskTeams)
-    .where(and(eq(taskTeams.organizationId, organizationId), eq(taskTeams.id, taskTeamId)))
+    .where(
+      and(
+        eq(taskTeams.organizationId, organizationId),
+        eq(taskTeams.id, taskTeamId)
+      )
+    )
     .limit(1);
 
   return result[0] ?? null;
 }
 
-export async function getTaskTeamByTaskId(organizationId: number, taskId: number) {
+export async function getTaskTeamByTaskId(
+  organizationId: number,
+  taskId: number
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const result = await db
     .select()
     .from(taskTeams)
-    .where(and(eq(taskTeams.organizationId, organizationId), eq(taskTeams.taskId, taskId)))
+    .where(
+      and(
+        eq(taskTeams.organizationId, organizationId),
+        eq(taskTeams.taskId, taskId)
+      )
+    )
     .limit(1);
 
   return result[0] ?? null;
@@ -63,13 +95,47 @@ export async function createTeamMember(input: InsertTeamMember) {
   return result[0];
 }
 
-export async function getOrderedTeamMembers(organizationId: number, taskTeamId: number) {
+export async function getOrderedTeamMembers(
+  organizationId: number,
+  taskTeamId: number
+) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   return db
     .select()
     .from(teamMembers)
-    .where(and(eq(teamMembers.organizationId, organizationId), eq(teamMembers.taskTeamId, taskTeamId)))
+    .where(
+      and(
+        eq(teamMembers.organizationId, organizationId),
+        eq(teamMembers.taskTeamId, taskTeamId)
+      )
+    )
     .orderBy(asc(teamMembers.workflowOrder));
+}
+
+export async function getTeamMemberCountsByTaskIds(
+  organizationId: number,
+  taskIds: number[]
+) {
+  if (taskIds.length === 0) return new Map<number, number>();
+
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const rows = await db
+    .select({
+      taskId: teamMembers.taskId,
+      assignedAgentCount: count(teamMembers.id),
+    })
+    .from(teamMembers)
+    .where(
+      and(
+        eq(teamMembers.organizationId, organizationId),
+        inArray(teamMembers.taskId, taskIds)
+      )
+    )
+    .groupBy(teamMembers.taskId);
+
+  return new Map(rows.map(row => [row.taskId, row.assignedAgentCount]));
 }

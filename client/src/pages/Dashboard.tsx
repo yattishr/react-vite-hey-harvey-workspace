@@ -10,22 +10,26 @@ import { Plus, Zap, CheckCircle, AlertCircle, Clock } from "lucide-react";
 export default function Dashboard() {
   const { user, organization } = useAuth();
   const queriesEnabled = Boolean(user && organization);
-  const agentsQuery = trpc.agents.list.useQuery(undefined, { enabled: queriesEnabled });
-  const tasksQuery = trpc.tasks.list.useQuery(undefined, { enabled: queriesEnabled });
+  const agentsQuery = trpc.agents.list.useQuery(undefined, {
+    enabled: queriesEnabled,
+  });
+  const tasksQuery = trpc.tasks.list.useQuery(undefined, {
+    enabled: queriesEnabled,
+  });
 
   const agents = agentsQuery.data || [];
   const tasks = tasksQuery.data || [];
 
   // Calculate stats
-  const activeAgents = agents.filter((a) => a.isActive).length;
-  const completedTasks = tasks.filter((t) => t.status === "completed").length;
-  const runningTasks = tasks.filter((t) => t.status === "running").length;
+  const activeAgents = agents.filter(a => a.isActive).length;
+  const completedTasks = tasks.filter(t => t.status === "completed").length;
+  const runningTasks = tasks.filter(t => t.status === "running").length;
   const recentTasks = tasks.slice(0, 5);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+        return "border-emerald-200 bg-emerald-50 text-slate-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100";
       case "running":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       case "failed":
@@ -60,7 +64,8 @@ export default function Dashboard() {
           <div className="harvey-section-label mb-3">Workspace overview</div>
           <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-2">
-            Welcome back, {user?.name || "User"}. Manage your AI agents and tasks.
+            Welcome back, {user?.name || "User"}. Manage your AI agents and
+            tasks.
           </p>
         </div>
         <Link href="/agents">
@@ -77,7 +82,9 @@ export default function Dashboard() {
         <Card className="p-6 card-elevated">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Active Agents</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Active Agents
+              </p>
               <p className="text-3xl font-bold mt-2">{activeAgents}</p>
               <p className="text-xs text-muted-foreground mt-2">
                 {agents.length} total agents
@@ -93,7 +100,9 @@ export default function Dashboard() {
         <Card className="p-6 card-elevated">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Completed Tasks</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Completed Tasks
+              </p>
               <p className="text-3xl font-bold mt-2">{completedTasks}</p>
               <p className="text-xs text-muted-foreground mt-2">
                 {tasks.length} total tasks
@@ -109,7 +118,9 @@ export default function Dashboard() {
         <Card className="p-6 card-elevated">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Running Tasks</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Running Tasks
+              </p>
               <p className="text-3xl font-bold mt-2">{runningTasks}</p>
               <p className="text-xs text-muted-foreground mt-2">
                 In progress now
@@ -133,7 +144,7 @@ export default function Dashboard() {
 
         {tasksQuery.isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map(i => (
               <Card key={i} className="p-4">
                 <Skeleton className="h-6 w-3/4 mb-2" />
                 <Skeleton className="h-4 w-1/2" />
@@ -142,20 +153,26 @@ export default function Dashboard() {
           </div>
         ) : recentTasks.length > 0 ? (
           <div className="space-y-3">
-            {recentTasks.map((task) => (
+            {recentTasks.map(task => (
               <Link key={task.id} href={`/tasks/${task.id}`}>
                 <Card className="p-4 card-elevated hover:shadow-elevated cursor-pointer transition-all">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">{task.title}</h3>
+                      <h3 className="font-semibold text-foreground">
+                        {task.title}
+                      </h3>
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                         {task.description}
                       </p>
                       <div className="flex items-center gap-2 mt-3">
-                        <Badge className={`${getStatusColor(task.status)}`}>
+                        <Badge
+                          variant="outline"
+                          className={getStatusColor(task.status)}
+                        >
                           <span className="flex items-center gap-1">
                             {getStatusIcon(task.status)}
-                            {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+                            {task.status.charAt(0).toUpperCase() +
+                              task.status.slice(1)}
                           </span>
                         </Badge>
                         <span className="text-xs text-muted-foreground">
@@ -170,7 +187,9 @@ export default function Dashboard() {
           </div>
         ) : (
           <Card className="p-8 text-center card-subtle">
-            <p className="text-muted-foreground">No tasks yet. Create your first task to get started.</p>
+            <p className="text-muted-foreground">
+              No tasks yet. Create your first task to get started.
+            </p>
             <Link href="/tasks">
               <Button className="mt-4">Create Task</Button>
             </Link>
@@ -206,19 +225,28 @@ export default function Dashboard() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">API Status</span>
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+              <Badge
+                variant="outline"
+                className="border-emerald-200 bg-emerald-50 text-slate-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100"
+              >
                 Operational
               </Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">LLM Service</span>
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+              <Badge
+                variant="outline"
+                className="border-emerald-200 bg-emerald-50 text-slate-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100"
+              >
                 Ready
               </Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Database</span>
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+              <Badge
+                variant="outline"
+                className="border-emerald-200 bg-emerald-50 text-slate-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100"
+              >
                 Connected
               </Badge>
             </div>

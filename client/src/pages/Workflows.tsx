@@ -2,12 +2,31 @@ import { useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Play, Eye } from "lucide-react";
 import { toast } from "sonner";
@@ -23,7 +42,9 @@ export default function Workflows() {
     steps: [{ stepNumber: 1, agentIds: [], taskDescription: "" }],
   });
 
-  const workflowsQuery = trpc.workflows.list.useQuery(undefined, { enabled: !!user });
+  const workflowsQuery = trpc.workflows.list.useQuery(undefined, {
+    enabled: !!user,
+  });
   const createWorkflowMutation = trpc.workflows.create.useMutation({
     onSuccess: () => {
       toast.success("Workflow created successfully!");
@@ -36,7 +57,7 @@ export default function Workflows() {
       setIsCreating(false);
       workflowsQuery.refetch();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Failed to create workflow: ${error.message}`);
     },
   });
@@ -47,7 +68,11 @@ export default function Workflows() {
       return;
     }
 
-    if (newWorkflow.steps.some((s) => !s.taskDescription.trim() || s.agentIds.length === 0)) {
+    if (
+      newWorkflow.steps.some(
+        s => !s.taskDescription.trim() || s.agentIds.length === 0
+      )
+    ) {
       toast.error("All steps must have a description and at least one agent");
       return;
     }
@@ -56,7 +81,7 @@ export default function Workflows() {
       name: newWorkflow.name,
       description: newWorkflow.description || undefined,
       executionType: newWorkflow.executionType,
-      steps: newWorkflow.steps.map((s) => ({
+      steps: newWorkflow.steps.map(s => ({
         stepNumber: s.stepNumber,
         agentIds: s.agentIds,
         taskDescription: s.taskDescription,
@@ -69,7 +94,7 @@ export default function Workflows() {
       case "draft":
         return "bg-gray-100 text-gray-800";
       case "active":
-        return "bg-green-100 text-green-800";
+        return "border-emerald-200 bg-emerald-50 text-slate-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100";
       case "archived":
         return "bg-gray-200 text-gray-700";
       default:
@@ -121,7 +146,8 @@ export default function Workflows() {
             <DialogHeader>
               <DialogTitle>Create Workflow</DialogTitle>
               <DialogDescription>
-                Define a multi-agent workflow with sequential, parallel, or conditional execution
+                Define a multi-agent workflow with sequential, parallel, or
+                conditional execution
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -131,17 +157,26 @@ export default function Workflows() {
                   id="workflow-name"
                   placeholder="e.g., Market Research Workflow"
                   value={newWorkflow.name}
-                  onChange={(e) => setNewWorkflow({ ...newWorkflow, name: e.target.value })}
+                  onChange={e =>
+                    setNewWorkflow({ ...newWorkflow, name: e.target.value })
+                  }
                 />
               </div>
 
               <div>
-                <Label htmlFor="workflow-description">Description (Optional)</Label>
+                <Label htmlFor="workflow-description">
+                  Description (Optional)
+                </Label>
                 <Textarea
                   id="workflow-description"
                   placeholder="Describe what this workflow does..."
                   value={newWorkflow.description}
-                  onChange={(e) => setNewWorkflow({ ...newWorkflow, description: e.target.value })}
+                  onChange={e =>
+                    setNewWorkflow({
+                      ...newWorkflow,
+                      description: e.target.value,
+                    })
+                  }
                 />
               </div>
 
@@ -157,9 +192,15 @@ export default function Workflows() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sequential">Sequential (steps run one after another)</SelectItem>
-                    <SelectItem value="parallel">Parallel (steps run simultaneously)</SelectItem>
-                    <SelectItem value="conditional">Conditional (steps based on conditions)</SelectItem>
+                    <SelectItem value="sequential">
+                      Sequential (steps run one after another)
+                    </SelectItem>
+                    <SelectItem value="parallel">
+                      Parallel (steps run simultaneously)
+                    </SelectItem>
+                    <SelectItem value="conditional">
+                      Conditional (steps based on conditions)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -170,11 +211,13 @@ export default function Workflows() {
                   <Card key={idx} className="p-4">
                     <div className="space-y-3">
                       <div>
-                        <Label className="text-sm">Step {step.stepNumber}: Task Description</Label>
+                        <Label className="text-sm">
+                          Step {step.stepNumber}: Task Description
+                        </Label>
                         <Textarea
                           placeholder="Describe the task for this step..."
                           value={step.taskDescription}
-                          onChange={(e) => {
+                          onChange={e => {
                             const updated = [...newWorkflow.steps];
                             updated[idx].taskDescription = e.target.value;
                             setNewWorkflow({ ...newWorkflow, steps: updated });
@@ -249,17 +292,26 @@ export default function Workflows() {
       ) : (
         <div className="grid gap-4">
           {workflows.map((workflow: any) => (
-            <Card key={workflow.id} className="hover:shadow-lg transition-shadow">
+            <Card
+              key={workflow.id}
+              className="hover:shadow-lg transition-shadow"
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-xl">{workflow.name}</CardTitle>
                     {workflow.description && (
-                      <CardDescription className="mt-1">{workflow.description}</CardDescription>
+                      <CardDescription className="mt-1">
+                        {workflow.description}
+                      </CardDescription>
                     )}
                   </div>
-                  <Badge className={getStatusColor(workflow.status)}>
-                    {workflow.status.charAt(0).toUpperCase() + workflow.status.slice(1)}
+                  <Badge
+                    variant="outline"
+                    className={getStatusColor(workflow.status)}
+                  >
+                    {workflow.status.charAt(0).toUpperCase() +
+                      workflow.status.slice(1)}
                   </Badge>
                 </div>
               </CardHeader>
