@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
@@ -10,7 +11,12 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _client = postgres(process.env.DATABASE_URL, { prepare: false });
+      _client = postgres(process.env.DATABASE_URL, {
+        prepare: false,
+        ...(process.env.DATABASE_SSL_CA_PATH
+          ? { ssl: { ca: readFileSync(process.env.DATABASE_SSL_CA_PATH, "utf8"), rejectUnauthorized: true } }
+          : {}),
+      });
       _db = drizzle(_client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);

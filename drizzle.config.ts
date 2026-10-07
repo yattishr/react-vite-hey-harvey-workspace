@@ -1,3 +1,5 @@
+import "dotenv/config";
+import { readFileSync } from "node:fs";
 import { defineConfig } from "drizzle-kit";
 
 const connectionString = process.env.DATABASE_URL;
@@ -11,5 +13,8 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     url: connectionString,
+    ...(process.env.DATABASE_SSL_CA_PATH
+      ? { ssl: { ca: readFileSync(process.env.DATABASE_SSL_CA_PATH, "utf8"), rejectUnauthorized: true } }
+      : {}),
   },
 });
