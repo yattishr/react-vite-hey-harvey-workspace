@@ -28,13 +28,13 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: ScrollText, label: "Logs Explorer", path: "/logs" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: WandSparkles, label: "Build My Team", path: "/build-team" },
   { icon: Users, label: "Agents", path: "/agents" },
   { icon: CheckSquare, label: "Tasks", path: "/tasks" },
   { icon: MessageCircle, label: "Conversations", path: "/conversations" },
   { icon: Zap, label: "Workflows", path: "/workflows" },
+  { icon: ScrollText, label: "Logs Explorer", path: "/logs" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

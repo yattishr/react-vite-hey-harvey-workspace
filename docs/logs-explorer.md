@@ -6,7 +6,7 @@ The explorer reads existing `runtimeEvents` joined to `taskRuns`, and legacy `ta
 
 ## Querying
 
-Select a time window (at most 31 days), then run a query. The window is inclusive at the start and exclusive at the end. Display timestamps use the browser's local time; custom inputs are labeled UTC. Empty queries match all entries in the selected window.
+Select a time window (at most 93 days), then run a query. The window is inclusive at the start and exclusive at the end. Display timestamps use the browser's local time; custom inputs are labeled UTC. Empty queries match all entries in the selected window.
 
 ```text
 severity=ERROR
@@ -32,7 +32,7 @@ The tRPC endpoint requires an authenticated organization member. The organizatio
 
 Only selected runtime metadata (`sequence`, `position`, `attempt`, `artifactId`, `errorCode`) and legacy step/agent identifiers are returned. Raw prompts, model outputs, and legacy free-form `details` are excluded from this endpoint and its export. Existing event names remain visible. Database queries are read-only with an eight-second statement timeout. This feature does not change retention or existing Data API/RLS policies.
 
-At high volume, evaluate query plans and add organization/time indexes through the repository's migration process. The existing indexes prioritize per-task runtime retrieval; a 31-day organization-wide scan can time out on large datasets. Narrow the time window if that happens. Alerts, log sinks, infrastructure ingestion, full-text payload search, and persistent server-side saved queries are outside this version.
+At high volume, evaluate query plans and add organization/time indexes through the repository's migration process. The existing indexes prioritize per-task runtime retrieval; a 93-day organization-wide scan can time out on large datasets. Narrow the time window if that happens. Alerts, log sinks, infrastructure ingestion, full-text payload search, and persistent server-side saved queries are outside this version.
 
 ## Validation
 

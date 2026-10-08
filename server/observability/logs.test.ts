@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
-import { logInput, parseLogQuery } from "../../shared/logs";
+import { logInput, logErrorMessage, parseLogQuery } from "../../shared/logs";
 import { buildLogsQuery } from "./service";
 import { logsRouter } from "./router";
 import type { TrpcContext } from "../_core/context";
@@ -47,7 +47,7 @@ describe("log query validation", () => {
       false
     );
     expect(
-      logInput.safeParse({ ...input, end: "2027-01-01T00:00:00Z" }).success
+      logInput.safeParse({ ...input, end: "2027-02-01T00:00:00Z" }).success
     ).toBe(false);
     expect(
       logInput.safeParse({
@@ -55,6 +55,40 @@ describe("log query validation", () => {
         cursor: { timestamp: input.start, id: "injected" },
       }).success
     ).toBe(false);
+  });
+  it("accepts the reported July–August range and the exact 93-day boundary", () => {
+    expect(
+      logInput.safeParse({
+        ...input,
+        start: "2026-07-01T12:05:00.000Z",
+        end: "2026-08-31T13:00:00.000Z",
+      }).success
+    ).toBe(true);
+    const end = new Date(Date.parse(input.start) + 93 * 86400000);
+    expect(
+      logInput.safeParse({ ...input, end: end.toISOString() }).success
+    ).toBe(true);
+    end.setMilliseconds(end.getMilliseconds() + 1);
+    const result = logInput.safeParse({ ...input, end: end.toISOString() });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(logErrorMessage(result.error)).toBe(
+        "Choose a time range of 93 days or less."
+      );
+      expect(logErrorMessage(new Error(result.error.message))).toBe(
+        "Choose a time range of 93 days or less."
+      );
+    }
+  });
+  it("shows a readable error for reversed times and preserves ordinary errors", () => {
+    const result = logInput.safeParse({ ...input, end: input.start });
+    if (result.success) throw new Error("Expected invalid range");
+    expect(logErrorMessage(result.error)).toBe(
+      "End time must be after start time."
+    );
+    expect(logErrorMessage(new Error("Storage unavailable"))).toBe(
+      "Storage unavailable"
+    );
   });
   it("parameterizes values and scopes both event sources", () => {
     const value = "%' OR 1=1 --";

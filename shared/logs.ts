@@ -13,14 +13,32 @@ export const logInput = z
       })
       .optional(),
   })
-  .refine(
-    v =>
-      Date.parse(v.end) > Date.parse(v.start) &&
-      Date.parse(v.end) - Date.parse(v.start) <= 31 * 86400000,
-    {
-      message: "Choose a time range between one millisecond and 31 days.",
+  .refine(v => Date.parse(v.end) > Date.parse(v.start), {
+    message: "End time must be after start time.",
+  })
+  .refine(v => Date.parse(v.end) - Date.parse(v.start) <= 93 * 86400000, {
+    message: "Choose a time range of 93 days or less.",
+  });
+
+/** Zod messages may arrive directly or serialized inside a tRPC error. */
+export function logErrorMessage(error: unknown): string {
+  if (error instanceof z.ZodError)
+    return error.issues.map(issue => issue.message).join(" ");
+  const message = error instanceof Error ? error.message : "Invalid query.";
+  try {
+    const issues: unknown = JSON.parse(message);
+    if (
+      Array.isArray(issues) &&
+      issues.length > 0 &&
+      issues.every(issue => typeof issue?.message === "string")
+    ) {
+      return issues.map(issue => issue.message).join(" ");
     }
-  );
+  } catch {
+    /* Ordinary error messages are already readable. */
+  }
+  return message;
+}
 
 export type LogInput = z.infer<typeof logInput>;
 export type LogEntry = {

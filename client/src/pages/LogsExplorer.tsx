@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   logInput,
+  logErrorMessage,
   parseLogQuery,
   type LogInput,
   type LogEntry,
@@ -112,7 +113,7 @@ function Explorer({
       setHistory([]);
       setExpanded(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Invalid query");
+      toast.error(logErrorMessage(e));
     }
   }
 
@@ -362,7 +363,7 @@ function Explorer({
               <option value="1440">Last 24 hours</option>
               <option value="10080">Last 7 days</option>
               <option value="43200">Last 30 days</option>
-              <option value="custom">Custom (UTC)</option>
+              <option value="custom">Custom (UTC, up to 93 days)</option>
             </select>
           </label>
           {range === "custom" && (
@@ -420,7 +421,7 @@ function Explorer({
         <textarea
           aria-label="Log query"
           spellCheck={false}
-          className="block min-h-28 w-full resize-y bg-slate-950 p-5 font-mono text-sm leading-7 text-slate-100 outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+          className="block min-h-28 w-full resize-y bg-slate-500 p-5 font-mono text-sm leading-7 text-slate-900 outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => {
@@ -581,7 +582,7 @@ function Explorer({
             </div>
             {query.error ? (
               <div role="alert" className="p-6 text-sm text-destructive">
-                Unable to load logs: {query.error.message}
+                Unable to load logs: {logErrorMessage(query.error)}
                 <Button
                   variant="outline"
                   className="ml-3"
