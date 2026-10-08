@@ -1,3 +1,4 @@
+import { DEFAULT_OPENAI_MODEL } from "../../shared/model-settings";
 import { z } from "zod";
 
 const booleanFromEnv = z
@@ -14,7 +15,7 @@ const agentsRuntimeEnvironmentSchema = z.object({
     .enum(["true", "false"])
     .default(process.env.NODE_ENV === "test" ? "false" : "true")
     .transform(value => value === "true"),
-  OPENAI_AGENTS_DEFAULT_MODEL: z.string().trim().min(1).default("gpt-4o-mini"),
+  OPENAI_AGENTS_DEFAULT_MODEL: z.string().trim().min(1).default(DEFAULT_OPENAI_MODEL),
   OPENAI_AGENTS_MAX_TURNS: positiveInteger("8", 50),
   OPENAI_AGENTS_STEP_TIMEOUT_MS: positiveInteger("90000", 900_000),
   OPENAI_AGENTS_RUN_TIMEOUT_MS: positiveInteger("300000", 3_600_000),

@@ -24,7 +24,8 @@ export function buildLogsQuery(organizationId: number, input: LogInput) {
         r."correlationId", r."openaiTraceId" AS "traceId",
         jsonb_strip_nulls(jsonb_build_object('sequence', e.sequence,
           'position', e.payload->'position', 'attempt', e.payload->'attempt',
-          'artifactId', e.payload->'artifactId', 'errorCode', e.payload->'errorCode')) AS payload
+          'artifactId', e.payload->'artifactId', 'errorCode', e.payload->'errorCode',
+          'model', e.payload->'model', 'reasoningEffort', e.payload->'reasoningEffort')) AS payload
       FROM "runtimeEvents" e JOIN "taskRuns" r ON r.id = e."taskRunId" AND r."organizationId" = e."organizationId"
       WHERE e."organizationId" = ${organizationId}
         AND e."createdAt" >= ${input.start}::timestamp AND e."createdAt" < ${input.end}::timestamp

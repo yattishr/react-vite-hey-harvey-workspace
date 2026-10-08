@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { eq, and } from "drizzle-orm";
 import { tasks, type Task } from "../../drizzle/schema";
 import { ENV } from "../_core/env";
+import { getReasoningEffort } from "../_core/model-settings";
 import { invokeLLM } from "../_core/llm";
 import { getAgentTemplateById } from "../agents/agentTemplateRepository";
 import {
@@ -136,7 +137,7 @@ export async function executeTaskTeam(
         taskRunId,
         runtimeStatus: "pending",
         status: "pending",
-        inputContext: { ...runContext },
+        inputContext: { ...runContext, reasoningEffort: getReasoningEffort() },
         model: ENV.llmModel,
         promptVersion: "v1.1",
       });

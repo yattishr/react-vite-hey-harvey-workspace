@@ -1,3 +1,4 @@
+import { ModelControls } from "./ModelControls";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AuthDialog } from "@/components/AuthDialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -288,7 +289,7 @@ function DashboardLayoutContent({
           </div>
         )}
         <main className="harvey-app-main flex-1">
-          <div className="harvey-app-page">{children}</div>
+          <div className="harvey-app-page"><ModelControls />{children}</div>
         </main>
       </SidebarInset>
     </>

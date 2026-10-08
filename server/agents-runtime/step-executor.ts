@@ -1,3 +1,4 @@
+import { getReasoningEffort } from "../_core/model-settings";
 import { generateTraceId } from "@openai/agents";
 import type {
   AgentTemplate,
@@ -56,6 +57,7 @@ export async function executeSdkStep(input: {
       status: "running",
       runtimeStatus: attempt === 1 ? "running" : "retrying",
       inputContext: {
+        reasoningEffort: getReasoningEffort(),
         outputContractKey: "workspace_step_v1",
         upstreamArtifactIds: input.upstreamArtifacts.map(
           artifact => artifact.id
@@ -77,6 +79,8 @@ export async function executeSdkStep(input: {
         position: input.member.workflowOrder,
         attempt,
         agentName: input.template.name,
+        model: input.model,
+        reasoningEffort: getReasoningEffort(),
       },
     });
 

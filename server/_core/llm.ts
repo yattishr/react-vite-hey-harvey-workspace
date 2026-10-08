@@ -1,3 +1,5 @@
+import { getReasoningEffort } from "./model-settings";
+import { supportsReasoningToggle } from "../../shared/model-settings";
 import { ENV } from "./env";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
@@ -384,6 +386,15 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     model: model || ENV.llmModel,
   };
 
+  const usesReasoningToggle = supportsReasoningToggle(String(payload.model));
+  const effort = getReasoningEffort();
+  if (usesReasoningToggle) {
+    payload.reasoning_effort = effort;
+    if (effort !== "none" && tools?.length) {
+      throw new Error("GPT-6 Luna reasoning with tools requires the Responses API. Use the Agents SDK runtime for tool calls.");
+    }
+  }
+
   if (tools && tools.length > 0) {
     payload.tools = tools;
   }
@@ -398,13 +409,13 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   const resolvedMaxTokens = max_tokens ?? maxTokens;
   if (typeof resolvedMaxTokens === "number") {
-    payload.max_tokens = resolvedMaxTokens;
+    payload[usesReasoningToggle ? "max_completion_tokens" : "max_tokens"] = resolvedMaxTokens;
   }
 
-  if (thinking) {
+  if (thinking && !usesReasoningToggle) {
     payload.thinking = thinking;
   }
-  if (reasoning) {
+  if (reasoning && !usesReasoningToggle) {
     payload.reasoning = reasoning;
   }
 

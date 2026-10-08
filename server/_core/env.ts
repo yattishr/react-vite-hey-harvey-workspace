@@ -1,3 +1,5 @@
+import { DEFAULT_OPENAI_MODEL } from "../../shared/model-settings";
+
 export const ENV = {
   appId: process.env.VITE_APP_ID ?? "",
   cookieSecret: process.env.JWT_SECRET ?? "",
@@ -20,7 +22,7 @@ export const ENV = {
     process.env.OPENAI_API_KEY ??
     process.env.BUILT_IN_FORGE_API_KEY ??
     "",
-  llmModel: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
+  llmModel: process.env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL,
   forgeApiUrl:
     process.env.BUILT_IN_FORGE_API_URL ??
     process.env.OPENAI_BASE_URL ??

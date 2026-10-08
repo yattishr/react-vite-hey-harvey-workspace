@@ -1,4 +1,7 @@
 import { logsRouter } from "./observability/router";
+import { ENV } from "./_core/env";
+import { getAgentsRuntimeConfig } from "./agents-runtime/config";
+import { supportsReasoningToggle } from "../shared/model-settings";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -27,6 +30,10 @@ import { getTeamMemberCountsByTaskIds } from "./teams/taskTeamRepository";
 import { isAgentTeamReuseEnabled } from "./orchestration/agentOrchestrator";
 
 export const appRouter = router({
+  modelSettings: organizationProcedure.query(() => {
+    const agentsModel = getAgentsRuntimeConfig().OPENAI_AGENTS_DEFAULT_MODEL;
+    return { model: ENV.llmModel, agentsModel, reasoningToggleSupported: supportsReasoningToggle(ENV.llmModel) && supportsReasoningToggle(agentsModel) };
+  }),
   logs: logsRouter,
   system: systemRouter,
   agentFactory: agentFactoryRouter,

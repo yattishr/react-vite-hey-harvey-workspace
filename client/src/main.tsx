@@ -1,3 +1,5 @@
+import { getReasoningEffort } from "@/lib/model-settings";
+import { REASONING_HEADER } from "@shared/model-settings";
 import { trpc } from "@/lib/trpc";
 import { getActiveOrganizationId, supabase } from "@/lib/supabase";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
@@ -43,7 +45,7 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       async headers() {
-        const headers: Record<string, string> = {};
+        const headers: Record<string, string> = { [REASONING_HEADER]: getReasoningEffort() };
         const { data } = await supabase.auth.getSession();
         const accessToken = data.session?.access_token;
         const organizationId = getActiveOrganizationId();

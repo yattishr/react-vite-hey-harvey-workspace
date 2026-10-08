@@ -1,3 +1,5 @@
+import { getReasoningEffort } from "../_core/model-settings";
+import { supportsReasoningToggle } from "../../shared/model-settings";
 import { Agent } from "@openai/agents";
 import type { AgentTemplate } from "../../drizzle/schema";
 import type { z } from "zod";
@@ -29,6 +31,7 @@ export function compileAgent<TSchema extends z.ZodObject<any>>(input: {
     name: input.template.name,
     instructions: composeInstructions(input.template),
     model: input.model,
+    ...(supportsReasoningToggle(input.model) ? { modelSettings: { reasoning: { effort: getReasoningEffort() } } } : {}),
     tools,
     handoffs: [],
     outputType: input.outputSchema,

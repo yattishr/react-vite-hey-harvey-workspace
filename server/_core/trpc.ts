@@ -1,5 +1,7 @@
 import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
 import { initTRPC, TRPCError } from "@trpc/server";
+import { withReasoningHeader } from "./model-settings";
+import { REASONING_HEADER } from "../../shared/model-settings";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
 
@@ -8,7 +10,10 @@ const t = initTRPC.context<TrpcContext>().create({
 });
 
 export const router = t.router;
-export const publicProcedure = t.procedure;
+const modelProcedure = t.procedure.use(({ ctx, next }) =>
+  withReasoningHeader(ctx.req?.headers?.[REASONING_HEADER], () => next())
+);
+export const publicProcedure = modelProcedure;
 
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -25,7 +30,7 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser);
+export const protectedProcedure = modelProcedure.use(requireUser);
 
 const requireOrganization = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -51,9 +56,9 @@ const requireOrganization = t.middleware(async opts => {
   });
 });
 
-export const organizationProcedure = t.procedure.use(requireOrganization);
+export const organizationProcedure = modelProcedure.use(requireOrganization);
 
-export const adminProcedure = t.procedure.use(
+export const adminProcedure = modelProcedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
 
