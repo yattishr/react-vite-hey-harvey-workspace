@@ -1,3 +1,4 @@
+import { logsRouter } from "./observability/router";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -26,6 +27,7 @@ import { getTeamMemberCountsByTaskIds } from "./teams/taskTeamRepository";
 import { isAgentTeamReuseEnabled } from "./orchestration/agentOrchestrator";
 
 export const appRouter = router({
+  logs: logsRouter,
   system: systemRouter,
   agentFactory: agentFactoryRouter,
   auth: router({

@@ -290,6 +290,7 @@ export default function TaskDetail() {
               .replace(/^./, value => value.toUpperCase())}
           </Badge>
         </div>
+        <Button variant="outline" asChild><Link href={`/logs?${new URLSearchParams({ query: `taskId=${task.id}`, start: new Date(Date.now() - 30 * 86400000).toISOString(), end: new Date().toISOString() })}`}>Explore logs</Link></Button>
         {task.status !== "running" && (
           <Button
             variant="outline"

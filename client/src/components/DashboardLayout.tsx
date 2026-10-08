@@ -21,13 +21,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users, CheckSquare, MessageCircle, Zap, WandSparkles } from "lucide-react";
+import { ScrollText, LayoutDashboard, LogOut, PanelLeft, Users, CheckSquare, MessageCircle, Zap, WandSparkles } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
+  { icon: ScrollText, label: "Logs Explorer", path: "/logs" },
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
   { icon: WandSparkles, label: "Build My Team", path: "/build-team" },
   { icon: Users, label: "Agents", path: "/agents" },

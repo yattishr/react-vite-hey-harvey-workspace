@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import LogsExplorer from "./pages/LogsExplorer";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Agents from "./pages/Agents";
@@ -43,6 +44,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       {isAuthenticated && (
         <>
+          <Route path="/logs">{() => <DashboardLayout><LogsExplorer /></DashboardLayout>}</Route>
           <Route path={"/dashboard"}>
             {() => (
               <DashboardLayout>
